@@ -51,9 +51,10 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 	 */
 	public static function config(Typecho_Widget_Helper_Form $form)
 	{
-		$siteStatus =  new Typecho_Widget_Helper_Form_Element_Radio('siteStatus', array('1' => _t('开启'), '0' => _t('关闭')), '1', _t('开启sitemap.xml'), _t('开启后对收录更友好'));
-        $form->addInput($siteStatus);
-        $levelSite =  new Typecho_Widget_Helper_Form_Element_Radio('levelSite', array('1' => _t('不开启分级'), '0' => _t('开启分级')), '1', _t('是否分多个xml文件'), _t('百度不建议分级，但分级也可以收录。若数据量很大，打开缓慢时建议开启'));
+		$siteUrl = Typecho_Widget::widget('Widget_Options')->siteUrl;
+		$siteStatus =  new Typecho_Widget_Helper_Form_Element_Radio('siteStatus', array('1' => _t('开启'), '0' => _t('关闭')), '1', _t('开启sitemap.xml'), _t('开启后对收录更友好，sitemap地址：<a target="_blank" href="/sitemap.xml">' . $siteUrl . 'sitemap.xml</a>'));
+		$form->addInput($siteStatus);
+		$levelSite =  new Typecho_Widget_Helper_Form_Element_Radio('levelSite', array('1' => _t('不开启分级'), '0' => _t('开启分级')), '1', _t('是否分多个xml文件'), _t('百度不建议分级，但分级也可以收录。若数据量很大，打开缓慢时建议开启。可把每个xml提交给百度'));
 		$form->addInput($levelSite);
 		$sitePageSize =  new Typecho_Widget_Helper_Form_Element_Radio('sitePageSize', array('200' => _t('200'), '500' => _t('500'), '1000' => _t('1000')), '200', _t('每页最多可显示'), _t('仅在开启分级下生效，建议200条,超出自动分页'));
 		$form->addInput($sitePageSize);
