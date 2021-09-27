@@ -1,5 +1,5 @@
 # Sitemap 文档
-https://oct.cn/view/66
+插件教程地址：https://oct.cn/view/66
 
 #### 介绍
 typecho 全站支持百度sitemap.xml插件
