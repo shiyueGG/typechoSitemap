@@ -311,7 +311,49 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		$this->showXml($xmlhtml);
 	}
 
-	// 入口
+	/**
+	 * api网关方法
+	 * 
+	 */
+	public function siteName()
+	{
+		$key = $this->request->key;
+		if ($key == 'apipost') {
+			$this->postOneUrl();
+		} else {
+			$this->checkData();
+		}
+	}
+
+	/**
+	 * 通过api推送一个文章url
+	 * 
+	 */
+	public function postOneUrl()
+	{
+		$key = $_GET['key'];
+		if (!$key) {
+			$this->xmlJson(null, 'key不能为空', 1001);
+		}
+		if ($key !== $this->Sitemap->apiPostToken) {
+			$this->xmlJson(null, 'key不正确', 1001);
+		}
+
+		$url = $_GET['url'];
+		if (!$url) {
+			$this->xmlJson(null, 'url不能为空', 1001);
+		}
+		//方法一
+		$preg = "/http[s]?:\/\/[\w.]+[\w\/]*[\w.]*\??[\w=&\+\%]*/is";
+		if (!preg_match($preg, $url)) {
+			$this->xmlJson(null, 'url不合法', 1001);
+		}
+
+		$res = $this->sendBaiduPost($url);
+		$this->xmlJson($res['data'], $res['msg'], $res['code']);
+	}
+
+
 	public function action()
 	{
 		$this->widget('Widget_User')->pass('administrator');
@@ -327,12 +369,58 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		exit();
 	}
 
-	public function xmlJson($data)
+	public function xmlJson($data = null, $msg = '获取成功', $code = 1000)
 	{
 		header('Content-Type:application/json; charset=utf-8');
-		exit(json_encode($data, JSON_UNESCAPED_UNICODE));
+		$ret = [
+			'code' => $code,
+			'msg' => $msg,
+			'data' => $data,
+		];
+		exit(json_encode($ret, JSON_UNESCAPED_UNICODE));
 	}
 
+	public function sendBaiduPost($url)
+	{
+		$code = 1001;
+		if (empty($this->Sitemap->apiUrl)) {
+			$postMsg = '百度推送【失败】,请先设置插件中的接口地址；';
+		} else {
+			$client = Typecho_Http_Client::get();
+			$postMsg = '百度推送【失败】,';
+			if ($client) {
+				$client->setData(implode(PHP_EOL, [$url]))
+					->setHeader('Content-Type', 'text/plain')
+					->setTimeout(30)
+					->send($this->Sitemap->apiUrl);
+
+				$status = $client->getResponseStatus();
+				$res = $client->getResponseBody();
+				$res = json_decode($res, true);
+				if ($status == 200 && $res['success'] == 1) {
+					$code = 1000;
+					$postMsg = '百度推送【成功】,今日剩余次数' . $res['remain'];
+				}
+				if (!empty($res['not_same_site'])) {
+					$postMsg .= '失败原因：不是本站url，推送的url和token所属的不一致，';
+				}
+
+				if (!empty($res['message'])) {
+					$postMsg .= '失败原因：' . $res['message'] . '；请检查token是否正确；';
+				}
+			} else {
+				$postMsg = '百度推送【失败】，您的服务器不支持curl请求';
+			}
+		}
+
+		return [
+			'code' => $code,
+			'data' => $res,
+			'msg' => $postMsg
+		];
+	}
+
+	/*检测*/
 	public function checkData($data = null)
 	{
 		if (!$data) {
