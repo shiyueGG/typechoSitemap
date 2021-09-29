@@ -1,13 +1,13 @@
 <?php
 
 /**
- * 全站<strong style="color:#009688;">Sitemap.xml</strong>地图索引和<strong style="color:#009688;">百度文章主动推送</strong><br>
+ * 支持<strong style="color:#009688;">全站Sitemap.xml</strong>、<strong style="color:#009688;">百度文章主动推送</strong>、<strong style="color:#009688;">API主动推送</strong><br>
  * 请手动在robots.txt添加<a target="_blank" href="/sitemap.xml">sitemap.xml</a>指引 <br>
  * 设置教程请访问：<a style="font-weight:bold;" href="https://Oct.cn/view/66">教程地址>></a>
  *
  * @package Sitemap
  * @author 十月 Oct.cn
- * @version 1.0.2
+ * @version 1.0.3
  * @link https://Oct.cn/view/66
  */
 class Sitemap_Plugin implements Typecho_Plugin_Interface
@@ -22,10 +22,12 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 	public static function activate()
 	{
 		Helper::addRoute('sitemap', '/sitemap.xml', 'Sitemap_Action', 'siteMap');
+		Helper::addRoute('sitemap/gateway_[key]', '/sitemap/gateway_[key]', 'Sitemap_Action', 'siteName');
 		Helper::addRoute('sitemap/sitemap_[key]', '/sitemap/sitemap_[key].xml', 'Sitemap_Action', 'siteList');
 		Helper::addRoute('sitemap/sitemap_[key]_[page]', '/sitemap/sitemap_[key]_[page].xml', 'Sitemap_Action', 'siteList');
 		Typecho_Plugin::factory('Widget_Contents_Post_Edit')->finishPublish = array(__CLASS__, 'render');
-		return ('开启成功, 插件已经成功激活!');
+
+		return ('开启成功, 插件已经成功激活!请设置主动推送地址');
 	}
 	/**
 	 * 禁用插件方法,如果禁用失败,直接抛出异常
@@ -38,6 +40,7 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 	public static function deactivate()
 	{
 		Helper::removeRoute('sitemap');
+		Helper::removeAction('sitemap/gateway_[key]');
 		Helper::removeAction('sitemap/sitemap_[key]');
 		Helper::removeAction('sitemap/sitemap_[key]_[page]');
 		return ('插件已禁用');
@@ -57,6 +60,9 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		$form->addInput($baiduPost);
 		$apiUrl = new Typecho_Widget_Helper_Form_Element_Text('apiUrl', NULL, '', _t('百度推送接口地址'), _t('token变化后，请同步修改此处，否则身份校验不通过将推送失败。<a target="_blank" href="https://Oct.cn/view/66#百度主动推送">获取地址教程</a>'));
 		$form->addInput($apiUrl);
+		$apiPostToken = new Typecho_Widget_Helper_Form_Element_Text('apiPostToken', NULL, null, _t('API推送密钥'), _t('设置生成一个密钥，使用api推送时需携带，确保api安全调用。请勿外泄。<a target="_blank" href="https://Oct.cn/view/66#API主动推送">使用说明</a>'), ['class' => 'mini']);
+		$apiPostToken->input->setAttribute('class', 'mini');
+		$form->addInput($apiPostToken);
 		$levelSite =  new Typecho_Widget_Helper_Form_Element_Radio('levelSite', array('1' => _t('不开启分级'), '0' => _t('开启分级')), '1', _t('是否分多个xml文件'), _t('百度不建议分级，但分级也可以收录。若数据量很大，打开缓慢时建议开启'));
 		$form->addInput($levelSite);
 		$sitePageSize =  new Typecho_Widget_Helper_Form_Element_Radio('sitePageSize', array('200' => _t('200'), '500' => _t('500'), '1000' => _t('1000')), '200', _t('每页最多可显示'), _t('仅在开启分级下生效，建议200条,超出自动分页'));
@@ -97,35 +103,8 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		/* 允许自动推送 */
 		if ($Sitemap->baiduPost == 1) {
 			$url = $widget->permalink;
-			/* 没有填写接口地址 */
-			if (empty($Sitemap->apiUrl)) {
-				$postMsg = ' -- 百度推送【失败】,请先设置插件中的接口地址；';
-			} else {
-				$client = Typecho_Http_Client::get();
-				$postMsg = ' -- 百度推送【失败】';
-				if ($client) {
-					$client->setData(implode(PHP_EOL, [$url]))
-						->setHeader('Content-Type', 'text/plain')
-						->setTimeout(30)
-						->send($Sitemap->apiUrl);
-
-					$status = $client->getResponseStatus();
-					$res = $client->getResponseBody();
-					$res = json_decode($res, true);
-					if ($status == 200 && $res['success'] == 1) {
-						$postMsg = ' -- 百度推送【成功】,今日剩余次数' . $res['remain'];
-					}
-					if (!empty($res['not_same_site'])) {
-						$postMsg .= '失败原因：不是本站url，推送的url和token所属的不一致，';
-					}
-
-					if (!empty($res['message'])) {
-						$postMsg .= '失败原因：' . $res['message'] . '；请检查token是否正确；';
-					}
-				} else {
-					$postMsg = ' -- 百度推送【失败】，您的服务器不支持curl请求';
-				}
-			}
+			$res = Typecho_Widget::widget('Sitemap_Action')->sendBaiduPost($url);
+			$postMsg = $res['msg'];
 			$adminUrl = Typecho_Widget::widget('Widget_Options')->adminUrl;
 			header("refresh:0;url= " . $adminUrl . "manage-posts.php");
 			Typecho_Widget::widget('Widget_Notice')->set(_t('文章 "<a href="%s">%s</a>" 已经发布 ' . $postMsg, $url, $widget->title), 'success');
