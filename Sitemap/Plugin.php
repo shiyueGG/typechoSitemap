@@ -7,7 +7,7 @@
  *
  * @package Sitemap
  * @author 十月 Oct.cn
- * @version 1.0.3
+ * @version 1.0.4
  * @link https://Oct.cn/view/66
  */
 class Sitemap_Plugin implements Typecho_Plugin_Interface
@@ -65,20 +65,57 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		$form->addInput($apiPostToken);
 		$levelSite =  new Typecho_Widget_Helper_Form_Element_Radio('levelSite', array('1' => _t('不开启分级'), '0' => _t('开启分级')), '1', _t('是否分多个xml文件'), _t('百度不建议分级，但分级也可以收录。若数据量很大，打开缓慢时建议开启'));
 		$form->addInput($levelSite);
-		$sitePageSize =  new Typecho_Widget_Helper_Form_Element_Radio('sitePageSize', array('200' => _t('200'), '500' => _t('500'), '1000' => _t('1000')), '200', _t('每页最多可显示'), _t('仅在开启分级下生效，建议200条,超出自动分页'));
+		$sitePageSize =  new Typecho_Widget_Helper_Form_Element_Radio('sitePageSize', array('200' => _t('200'), '500' => _t('500'), '1000' => _t('1000')), '500', _t('每页最多可显示'), _t('仅在开启分级下生效，建议500条,超出自动分页'));
 		$form->addInput($sitePageSize);
-		$catePriority =  new Typecho_Widget_Helper_Form_Element_Radio('catePriority', array('1' => _t('1'), '0.9' => _t('0.9'), '0.8' => _t('0.8'), '0.7' => _t('0.7'), '0.6' => _t('0.6'), '0.5' => _t('0.5')), '0.9', _t('分类页'));
+		// 优先级
+		$changefreq = array('always' => _t('always(经常)'), 'daily' => _t('daily(每天)'), 'weekly' => _t('weekly(每周)'), 'monthly' => _t('monthly(每月)'), 'yearly' => _t('yearly(每年)'), 'hourly' => _t('hourly(每时)'));
+		$priority = array('1' => _t('1'), '0.9' => _t('0.9'), '0.8' => _t('0.8'), '0.7' => _t('0.7'), '0.6' => _t('0.6'), '0.5' => _t('0.5'));
+		$congifPriority = new Typecho_Widget_Helper_Layout('div', array('class=' => 'typecho-page-title'));
+		$congifPriority->html('<h2>优先级和更新频率控制</h2>');
+		$congifPriority->setAttribute('style', 'border-bottom:solid 1px #cfcfcf');
+		$form->addItem($congifPriority);
+		// 分类
+		$cateChangefreq = new Typecho_Widget_Helper_Form_Element_Select('cateChangefreq', $changefreq, 'always', _t('<b>分类页</b>'));
+		$cateChangefreq->label->setAttribute('class', '');
+		$form->addInput($cateChangefreq);
+		$catePriority =  new Typecho_Widget_Helper_Form_Element_Radio('catePriority', $priority, '0.9');
 		$form->addInput($catePriority);
-		$tagPriority =  new Typecho_Widget_Helper_Form_Element_Radio('tagPriority', array('1' => _t('1'), '0.9' => _t('0.9'), '0.8' => _t('0.8'), '0.7' => _t('0.7'), '0.6' => _t('0.6'), '0.5' => _t('0.5')), '0.8', _t('标签页'));
+		// 标签
+		$tagChangefreq = new Typecho_Widget_Helper_Form_Element_Select('tagChangefreq', $changefreq, 'always', _t('<b>标签页</b>'));
+		$tagChangefreq->label->setAttribute('class', '');
+		$form->addInput($tagChangefreq);
+		$tagPriority =  new Typecho_Widget_Helper_Form_Element_Radio('tagPriority', $priority, '0.8');
 		$form->addInput($tagPriority);
-		$postPriority =  new Typecho_Widget_Helper_Form_Element_Radio('postPriority', array('1' => _t('1'), '0.9' => _t('0.9'), '0.8' => _t('0.8'), '0.7' => _t('0.7'), '0.6' => _t('0.6'), '0.5' => _t('0.5')), '0.9', _t('文章页'));
+		// 文章页
+		$postChangefreq = new Typecho_Widget_Helper_Form_Element_Select('postChangefreq', $changefreq, 'weekly', _t('<b>文章页</b>'));
+		$postChangefreq->label->setAttribute('class', '');
+		$form->addInput($postChangefreq);
+		$postPriority =  new Typecho_Widget_Helper_Form_Element_Radio('postPriority', $priority, '0.9');
 		$form->addInput($postPriority);
-		$HomePagePriority =  new Typecho_Widget_Helper_Form_Element_Radio('HomePagePriority', array('1' => _t('1'), '0.9' => _t('0.9'), '0.8' => _t('0.8'), '0.7' => _t('0.7'), '0.6' => _t('0.6'), '0.5' => _t('0.5')), '0.8', _t('首页分页'));
-		$form->addInput($HomePagePriority);
-		$CatePagePriority =  new Typecho_Widget_Helper_Form_Element_Radio('CatePagePriority', array('1' => _t('1'), '0.9' => _t('0.9'), '0.8' => _t('0.8'), '0.7' => _t('0.7'), '0.6' => _t('0.6'), '0.5' => _t('0.5')), '0.7', _t('分类分页'));
-		$form->addInput($CatePagePriority);
-		$pagesPriority =  new Typecho_Widget_Helper_Form_Element_Radio('pagesPriority', array('1' => _t('1'), '0.9' => _t('0.9'), '0.8' => _t('0.8'), '0.7' => _t('0.7'), '0.6' => _t('0.6'), '0.5' => _t('0.5')), '0.8', _t('独立页面'));
+		// 独立页面
+		$pagesChangefreq = new Typecho_Widget_Helper_Form_Element_Select('pagesChangefreq', $changefreq, 'monthly', _t('<b>独立页</b>'));
+		$pagesChangefreq->label->setAttribute('class', '');
+		$form->addInput($pagesChangefreq);
+		$pagesPriority =  new Typecho_Widget_Helper_Form_Element_Radio('pagesPriority', $priority, '0.8');
 		$form->addInput($pagesPriority);
+		// 搜索结果页
+		$searchChangefreq = new Typecho_Widget_Helper_Form_Element_Select('searchChangefreq', $changefreq, 'weekly', _t('<b>搜索结果页</b>'));
+		$searchChangefreq->label->setAttribute('class', '');
+		$form->addInput($searchChangefreq);
+		$searchPriority =  new Typecho_Widget_Helper_Form_Element_Radio('searchPriority', $priority, '0.8');
+		$form->addInput($searchPriority);
+		// 首页翻页
+		$HomeChangefreq = new Typecho_Widget_Helper_Form_Element_Select('HomeChangefreq', $changefreq, 'weekly', _t('<b>首页翻页</b>'));
+		$HomeChangefreq->label->setAttribute('class', '');
+		$form->addInput($HomeChangefreq);
+		$HomePagePriority =  new Typecho_Widget_Helper_Form_Element_Radio('HomePagePriority', $priority, '0.8');
+		$form->addInput($HomePagePriority);
+		// 分类翻页
+		$CatePageChangefreq = new Typecho_Widget_Helper_Form_Element_Select('CatePageChangefreq', $changefreq, 'monthly', _t('<b>分类翻页</b>'));
+		$CatePageChangefreq->label->setAttribute('class', '');
+		$form->addInput($CatePageChangefreq);
+		$CatePagePriority =  new Typecho_Widget_Helper_Form_Element_Radio('CatePagePriority', $priority, '0.7');
+		$form->addInput($CatePagePriority);
 	}
 	/**
 	 * 个人用户的配置面板
