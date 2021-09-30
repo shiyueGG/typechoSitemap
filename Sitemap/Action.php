@@ -12,11 +12,12 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	{
 		parent::__construct($request, $response, $params);
 		$this->db = Typecho_Db::get();
-		$this->siteUrl = Typecho_Widget::widget('Widget_Options')->siteUrl;
-		$this->Sitemap = Typecho_Widget::widget('Widget_Options')->Plugin('Sitemap');
+		$this->Options = Typecho_Widget::widget('Widget_Options');
+		$this->siteUrl = $this->Options->siteUrl;
+		$this->Sitemap = $this->Options->Plugin('Sitemap');
 		$siteStatus = $this->Sitemap->siteStatus;
 		$this->sitePageSize = $this->Sitemap->sitePageSize;
-		$this->pageSize = Typecho_Widget::widget('Widget_Options')->pageSize;
+		$this->pageSize = $this->Options->pageSize;
 		$this->ymd = date('Y-m-d', time());
 		if ($siteStatus == 0) {
 			// 关闭了sitemap
@@ -50,21 +51,23 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		$obj = $this->widget('Widget_Metas_Category_List');
 		if ($obj->have()) {
 			while ($obj->next()) {
-				$xmlhtml .= "<url><loc> " . $obj->permalink . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> " . $this->Sitemap->CatePagePriority . " </priority></url>";
+				$xmlhtml .= "<url><loc> " . $obj->permalink . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->cateChangefreq . " </changefreq><priority> " . $this->Sitemap->catePriority . " </priority></url>";
 			}
 		}
 		// 单页
 		$obj = $this->widget('Widget_Contents_Page_List');
 		if ($obj->have()) {
 			while ($obj->next()) {
-				$xmlhtml .= "<url><loc> " . $obj->permalink . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> " . $this->Sitemap->pagesPriority . " </priority></url>";
+				$xmlhtml .= "<url><loc> " . $obj->permalink . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->pagesChangefreq . " </changefreq><priority> " . $this->Sitemap->pagesPriority . " </priority></url>";
 			}
 		}
 		// 标签
 		$xmlhtml .= $this->retTag(true);
 		// 文章
 		$xmlhtml .= $this->retPost(true);
-		// 分页
+		// 搜索结果页
+		$xmlhtml .= $this->retSearch(true);
+		// 首页翻页
 		$xmlhtml .= $this->retHomePage(true);
 		$this->showXml($xmlhtml);
 	}
@@ -84,19 +87,25 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			->where('table.metas.type = ?', 'tag'))->num;
 		$tagsCount = intval($tagsCount);
 
-		// 分布
+		// 主域名
 		$xmlhtml = "<url><loc> " . $this->siteUrl .  "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> 1.0 </priority></url>";
 
-		// 文章分页
+		// 文章
 		$postSize = ceil($postCount / $this->sitePageSize);
 		for ($i = 0; $i < $postSize; $i++) {
 			$xmlhtml .= "<url><loc> " . $this->siteUrl .  "sitemap/sitemap_post_" . ($i + 1) . ".xml</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> 1.0 </priority></url>";
 		}
 
-		// 标签分页
+		// 标签
 		$tagsSize = ceil($tagsCount / $this->sitePageSize);
 		for ($i = 0; $i < $tagsSize; $i++) {
 			$xmlhtml .= "<url><loc> " . $this->siteUrl .  "sitemap/sitemap_tag_" . ($i + 1) . ".xml</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> 1.0 </priority></url>";
+		}
+
+		// 搜索结果页
+		$tagsSize = ceil($tagsCount / $this->sitePageSize);
+		for ($i = 0; $i < $tagsSize; $i++) {
+			$xmlhtml .= "<url><loc> " . $this->siteUrl .  "sitemap/sitemap_search_" . ($i + 1) . ".xml</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> 1.0 </priority></url>";
 		}
 
 		// 独立页面
@@ -149,6 +158,8 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			$this->retCatePage();
 		} else if ($key == 'pages') {
 			$this->retPages();
+		} else if ($key == 'search') {
+			$this->retSearch();
 		} else {
 			$this->checkData();
 		}
@@ -170,9 +181,8 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		}
 		// 效验
 		$this->checkData($data);
-		$priority = $this->Sitemap->pagesPriority;
 		for ($i = 0; $i < count($data); $i++) {
-			$xmlhtml .= "<url><loc> " . $data[$i] . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> " . $priority . " </priority></url>";
+			$xmlhtml .= "<url><loc> " . $data[$i] . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->pagesChangefreq . " </changefreq><priority> " . $this->Sitemap->pagesPriority . " </priority></url>";
 		}
 		$this->showXml($xmlhtml);
 	}
@@ -205,13 +215,12 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			}
 		}
 
-		$xmlhtml = "<url><loc> " . $data['permalink'] . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> " . $this->Sitemap->catePriority . " </priority></url>";
+		$xmlhtml = "<url><loc> " . $data['permalink'] . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->cateChangefreq . " </changefreq><priority> " . $this->Sitemap->catePriority . " </priority></url>";
 
 		// 分页
 		$count = ceil($count / $this->pageSize);
-		$priority = $this->Sitemap->CatePagePriority;
 		for ($i = 1; $i < $count; $i++) {
-			$xmlhtml .= "<url><loc> " . $data['permalink'] . "/" . $i . "/</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> " . $priority . " </priority></url>";
+			$xmlhtml .= "<url><loc> " . $data['permalink'] . "/" . $i . "/</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->CatePageChangefreq . " </changefreq><priority> " . $this->Sitemap->CatePagePriority . " </priority></url>";
 		}
 		$this->showXml($xmlhtml);
 	}
@@ -228,7 +237,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		$xmlhtml = '';
 		$priority = $this->Sitemap->HomePagePriority;
 		for ($i = 1; $i < $pages; $i++) {
-			$xmlhtml .= "<url><loc> " . $this->siteUrl . "page/" . $i . "/</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> " . $priority . " </priority></url>";
+			$xmlhtml .= "<url><loc> " . $this->siteUrl . "page/" . $i . "/</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->HomeChangefreq . " </changefreq><priority> " . $priority . " </priority></url>";
 		}
 
 		if ($ret) {
@@ -258,9 +267,49 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		if (!$ret) {
 			$this->checkData($tags);
 		}
-		$priority = $this->Sitemap->tagPriority;
+		$type = 'tag';
+		$routeExists = (NULL != Typecho_Router::get($type));
 		for ($i = 1; $i < count($tags); $i++) {
-			$xmlhtml .= "<url><loc> " . $this->siteUrl . "tag/" . urlencode($tags[$i]['slug']) . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> " . $priority . " </priority></url>";
+			$tags[$i]['slug'] = urlencode($tags[$i]['slug']);
+			$pathinfo = $routeExists ? Typecho_Router::url($type, $tags[$i]) : '#';
+			$permalink = Typecho_Common::url($pathinfo, $this->Options->index);
+			$xmlhtml .= "<url><loc> " . $permalink . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->tagChangefreq . " </changefreq><priority> " . $this->Sitemap->tagPriority . " </priority></url>";
+		}
+
+		if ($ret) {
+			return $xmlhtml;
+		}
+		$this->showXml($xmlhtml);
+	}
+
+	/**
+	 * 搜索结果页
+	 * 
+	 */
+	public function retSearch($ret = null)
+	{
+		$page = $this->request->page;
+		$xmlhtml = '';
+		$limit = $this->sitePageSize;
+		if ($ret) {
+			$page = 0;
+			$limit = 10000;
+		}
+		$tags = $this->db->fetchAll($this->db->select('slug,mid')->from('table.metas')
+			->where('table.metas.type = ?', 'tag')
+			->page($page, $limit)
+			->order('table.metas.mid', Typecho_Db::SORT_ASC));
+		// 效验
+		if (!$ret) {
+			$this->checkData($tags);
+		}
+		$type = 'search';
+		$routeExists = (NULL != Typecho_Router::get($type));
+		for ($i = 1; $i < count($tags); $i++) {
+			$tags[$i]['keywords'] = urlencode($tags[$i]['slug']);
+			$pathinfo = $routeExists ? Typecho_Router::url($type, $tags[$i]) : '#';
+			$permalink = Typecho_Common::url($pathinfo, $this->Options->index);
+			$xmlhtml .= "<url><loc> " . $permalink . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->searchChangefreq . " </changefreq><priority> " . $this->Sitemap->searchPriority . " </priority></url>";
 		}
 
 		if ($ret) {
@@ -292,18 +341,17 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			$this->checkData($content);
 		}
 		$priority = $this->Sitemap->postPriority;
-		$options = Typecho_Widget::widget('Widget_Options');
+		$type = 'post';
+		$routeExists = (NULL != Typecho_Router::get($type));
 		foreach ($content as $v) {
 			$v['slug'] = urlencode($v['slug']);
 			$v['date'] = new Typecho_Date($v['created']);
 			$v['year'] = $v['date']->year;
 			$v['month'] = $v['date']->month;
 			$v['day'] = $v['date']->day;
-			$type = 'post';
-			$routeExists = (NULL != Typecho_Router::get($type));
-			$v['pathinfo'] = $routeExists ? Typecho_Router::url($type, $v) : '#';
-			$v['permalink'] = Typecho_Common::url($v['pathinfo'], $options->index);
-			$xmlhtml .= "<url><loc> " . $v['permalink'] . "</loc><lastmod> " . date('Y-m-d H:i:s', $v['created']) . " </lastmod><changefreq> daily </changefreq><priority> " . $priority . " </priority></url>";
+			$pathinfo = $routeExists ? Typecho_Router::url($type, $v) : '#';
+			$permalink = Typecho_Common::url($pathinfo, $this->Options->index);
+			$xmlhtml .= "<url><loc> " . $permalink . "</loc><lastmod> " . date('Y-m-d H:i:s', $v['created']) . " </lastmod><changefreq> " . $this->Sitemap->postChangefreq . " </changefreq><priority> " . $priority . " </priority></url>";
 		}
 		if ($ret) {
 			return $xmlhtml;
