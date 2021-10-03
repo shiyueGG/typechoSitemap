@@ -1,13 +1,12 @@
 <?php
 
 /**
- * 支持<strong style="color:#009688;">全站Sitemap.xml</strong>、<strong style="color:#009688;">百度文章主动推送</strong>、<strong style="color:#009688;">API主动推送</strong><br>
- * 请手动在robots.txt添加<a target="_blank" href="/sitemap.xml">sitemap.xml</a>指引 <br>
+ * 支持全站<a target="_blank" href="/sitemap.xml" style="color:#009688;font-weight:bold;">Sitemap.xml</a>、<a target="_blank" href="/sitemap.html" style="color:#009688;font-weight:bold;">Sitemap.html</a>、<strong style="color:#009688;">百度自动推送</strong>、<strong style="color:#009688;">API手动推送</strong><br>
  * 设置教程请访问：<a style="font-weight:bold;" href="https://Oct.cn/view/66">教程地址>></a>
  *
  * @package Sitemap
  * @author 十月 Oct.cn
- * @version 1.0.4
+ * @version 1.0.5
  * @link https://Oct.cn/view/66
  */
 class Sitemap_Plugin implements Typecho_Plugin_Interface
@@ -22,6 +21,7 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 	public static function activate()
 	{
 		Helper::addRoute('sitemap', '/sitemap.xml', 'Sitemap_Action', 'siteMap');
+		Helper::addRoute('sitemap.html', '/sitemap.html', 'Sitemap_Action', 'sitemaphtml');
 		Helper::addRoute('sitemap/gateway_[key]', '/sitemap/gateway_[key]', 'Sitemap_Action', 'siteName');
 		Helper::addRoute('sitemap/sitemap_[key]', '/sitemap/sitemap_[key].xml', 'Sitemap_Action', 'siteList');
 		Helper::addRoute('sitemap/sitemap_[key]_[page]', '/sitemap/sitemap_[key]_[page].xml', 'Sitemap_Action', 'siteList');
@@ -40,6 +40,7 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 	public static function deactivate()
 	{
 		Helper::removeRoute('sitemap');
+		Helper::removeAction('sitemap.html');
 		Helper::removeAction('sitemap/gateway_[key]');
 		Helper::removeAction('sitemap/sitemap_[key]');
 		Helper::removeAction('sitemap/sitemap_[key]_[page]');
@@ -60,62 +61,41 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		$form->addInput($baiduPost);
 		$apiUrl = new Typecho_Widget_Helper_Form_Element_Text('apiUrl', NULL, '', _t('百度推送接口地址'), _t('token变化后，请同步修改此处，否则身份校验不通过将推送失败。<a target="_blank" href="https://Oct.cn/view/66#百度主动推送">获取地址教程</a>'));
 		$form->addInput($apiUrl);
-		$apiPostToken = new Typecho_Widget_Helper_Form_Element_Text('apiPostToken', NULL, null, _t('API推送密钥'), _t('设置生成一个密钥，使用api推送时需携带，确保api安全调用。请勿外泄。<a target="_blank" href="https://Oct.cn/view/66#API主动推送">使用说明</a>'), ['class' => 'mini']);
+		$apiPostToken = new Typecho_Widget_Helper_Form_Element_Text('apiPostToken', NULL, null, _t('API推送密钥'), _t('设置一个密钥，使用api推送时需携带，确保api安全调用。请勿外泄。<a target="_blank" href="https://Oct.cn/view/66#API主动推送">使用说明</a>'), ['class' => 'mini']);
 		$apiPostToken->input->setAttribute('class', 'mini');
 		$form->addInput($apiPostToken);
+		// 隐藏的分类
+		$mid = new Typecho_Widget_Helper_Form_Element_Text('mid', NULL, null, _t('填写不显示的分类mid'), _t('多个请用英文逗号,隔开。如:1,2 设置后将不输出该分类下的文章。mid获取方式：点击分类->编辑->查看网址后面的mid数字'), ['class' => 'mini']);
+		$mid->input->setAttribute('class', 'mini');
+		$form->addInput($mid);
+		// 分级
+		$congifPriority = new Typecho_Widget_Helper_Layout('div', array('class=' => 'typecho-page-title'));
+		$congifPriority->html('<h2>分级设置</h2>');
+		$congifPriority->setAttribute('style', 'border-bottom:solid 1px #cfcfcf');
+		$form->addItem($congifPriority);
 		$levelSite =  new Typecho_Widget_Helper_Form_Element_Radio('levelSite', array('1' => _t('不开启分级'), '0' => _t('开启分级')), '1', _t('是否分多个xml文件'), _t('百度不建议分级，但分级也可以收录。若数据量很大，打开缓慢时建议开启'));
 		$form->addInput($levelSite);
 		$sitePageSize =  new Typecho_Widget_Helper_Form_Element_Radio('sitePageSize', array('200' => _t('200'), '500' => _t('500'), '1000' => _t('1000')), '500', _t('每页最多可显示'), _t('仅在开启分级下生效，建议500条,超出自动分页'));
 		$form->addInput($sitePageSize);
 		// 优先级
-		$changefreq = array('always' => _t('always(经常)'), 'daily' => _t('daily(每天)'), 'weekly' => _t('weekly(每周)'), 'monthly' => _t('monthly(每月)'), 'yearly' => _t('yearly(每年)'), 'hourly' => _t('hourly(每时)'));
-		$priority = array('1' => _t('1'), '0.9' => _t('0.9'), '0.8' => _t('0.8'), '0.7' => _t('0.7'), '0.6' => _t('0.6'), '0.5' => _t('0.5'));
 		$congifPriority = new Typecho_Widget_Helper_Layout('div', array('class=' => 'typecho-page-title'));
 		$congifPriority->html('<h2>优先级和更新频率控制</h2>');
 		$congifPriority->setAttribute('style', 'border-bottom:solid 1px #cfcfcf');
 		$form->addItem($congifPriority);
 		// 分类
-		$cateChangefreq = new Typecho_Widget_Helper_Form_Element_Select('cateChangefreq', $changefreq, 'always', _t('<b>分类页</b>'));
-		$cateChangefreq->label->setAttribute('class', '');
-		$form->addInput($cateChangefreq);
-		$catePriority =  new Typecho_Widget_Helper_Form_Element_Radio('catePriority', $priority, '0.9');
-		$form->addInput($catePriority);
+		Sitemap_Plugin::_addInput($form, 'cate', '分类页', 'always', '0.9');
 		// 标签
-		$tagChangefreq = new Typecho_Widget_Helper_Form_Element_Select('tagChangefreq', $changefreq, 'always', _t('<b>标签页</b>'));
-		$tagChangefreq->label->setAttribute('class', '');
-		$form->addInput($tagChangefreq);
-		$tagPriority =  new Typecho_Widget_Helper_Form_Element_Radio('tagPriority', $priority, '0.8');
-		$form->addInput($tagPriority);
+		Sitemap_Plugin::_addInput($form, 'tag', '标签页', 'always', '0.8');
 		// 文章页
-		$postChangefreq = new Typecho_Widget_Helper_Form_Element_Select('postChangefreq', $changefreq, 'weekly', _t('<b>文章页</b>'));
-		$postChangefreq->label->setAttribute('class', '');
-		$form->addInput($postChangefreq);
-		$postPriority =  new Typecho_Widget_Helper_Form_Element_Radio('postPriority', $priority, '0.9');
-		$form->addInput($postPriority);
+		Sitemap_Plugin::_addInput($form, 'post', '文章页', 'weekly', '0.9');
 		// 独立页面
-		$pagesChangefreq = new Typecho_Widget_Helper_Form_Element_Select('pagesChangefreq', $changefreq, 'monthly', _t('<b>独立页</b>'));
-		$pagesChangefreq->label->setAttribute('class', '');
-		$form->addInput($pagesChangefreq);
-		$pagesPriority =  new Typecho_Widget_Helper_Form_Element_Radio('pagesPriority', $priority, '0.8');
-		$form->addInput($pagesPriority);
+		Sitemap_Plugin::_addInput($form, 'pages', '独立页', 'monthly', '0.8');
 		// 搜索结果页
-		$searchChangefreq = new Typecho_Widget_Helper_Form_Element_Select('searchChangefreq', $changefreq, 'weekly', _t('<b>搜索结果页</b>'));
-		$searchChangefreq->label->setAttribute('class', '');
-		$form->addInput($searchChangefreq);
-		$searchPriority =  new Typecho_Widget_Helper_Form_Element_Radio('searchPriority', $priority, '0.8');
-		$form->addInput($searchPriority);
+		Sitemap_Plugin::_addInput($form, 'search', '搜索结果页', 'weekly', '0.8');
 		// 首页翻页
-		$HomeChangefreq = new Typecho_Widget_Helper_Form_Element_Select('HomeChangefreq', $changefreq, 'weekly', _t('<b>首页翻页</b>'));
-		$HomeChangefreq->label->setAttribute('class', '');
-		$form->addInput($HomeChangefreq);
-		$HomePagePriority =  new Typecho_Widget_Helper_Form_Element_Radio('HomePagePriority', $priority, '0.8');
-		$form->addInput($HomePagePriority);
+		Sitemap_Plugin::_addInput($form, 'HomePage', '首页翻页', 'weekly', '0.8');
 		// 分类翻页
-		$CatePageChangefreq = new Typecho_Widget_Helper_Form_Element_Select('CatePageChangefreq', $changefreq, 'monthly', _t('<b>分类翻页</b>'));
-		$CatePageChangefreq->label->setAttribute('class', '');
-		$form->addInput($CatePageChangefreq);
-		$CatePagePriority =  new Typecho_Widget_Helper_Form_Element_Radio('CatePagePriority', $priority, '0.7');
-		$form->addInput($CatePagePriority);
+		Sitemap_Plugin::_addInput($form, 'CatePage', '分类翻页', 'monthly', '0.7');
 	}
 	/**
 	 * 个人用户的配置面板
@@ -147,5 +127,33 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 			Typecho_Widget::widget('Widget_Notice')->set(_t('文章 "<a href="%s">%s</a>" 已经发布 ' . $postMsg, $url, $widget->title), 'success');
 			die();
 		}
+	}
+
+	/**
+	 * 封装方法
+	 */
+	private static function _addInput($form, $name, $title, $changefreq, $priority)
+	{
+		$c = array(
+			'always' => _t('always(经常)'),
+			'daily' => _t('daily(每天)'),
+			'weekly' => _t('weekly(每周)'),
+			'monthly' => _t('monthly(每月)'),
+			'yearly' => _t('yearly(每年)'),
+			'hourly' => _t('hourly(每时)')
+		);
+		$p = array(
+			'1' => _t('1'),
+			'0.9' => _t('0.9'),
+			'0.8' => _t('0.8'),
+			'0.7' => _t('0.7'),
+			'0.6' => _t('0.6'),
+			'0.5' => _t('0.5')
+		);
+		$Select = new Typecho_Widget_Helper_Form_Element_Select($name . 'Changefreq', $c, $changefreq, _t('<b>' . $title . '</b>'));
+		$Select->label->setAttribute('class', '');
+		$form->addInput($Select);
+		$Radio =  new Typecho_Widget_Helper_Form_Element_Radio($name . 'Priority', $p, $priority);
+		$form->addInput($Radio);
 	}
 }
