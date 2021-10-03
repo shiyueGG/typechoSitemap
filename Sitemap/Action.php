@@ -11,14 +11,17 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	public function __construct($request, $response, $params = NULL)
 	{
 		parent::__construct($request, $response, $params);
+		$this->ver = '1.0.5';
 		$this->db = Typecho_Db::get();
 		$this->Options = Typecho_Widget::widget('Widget_Options');
 		$this->siteUrl = $this->Options->siteUrl;
 		$this->Sitemap = $this->Options->Plugin('Sitemap');
+		$this->stat = Typecho_Widget::widget('Widget_Stat');
 		$siteStatus = $this->Sitemap->siteStatus;
 		$this->sitePageSize = $this->Sitemap->sitePageSize;
 		$this->pageSize = $this->Options->pageSize;
 		$this->ymd = date('Y-m-d', time());
+		$this->mid = $this->_ckmid();
 		if ($siteStatus == 0) {
 			// 关闭了sitemap
 			$this->checkData();
@@ -48,12 +51,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	{
 		$xmlhtml = "<url><loc> " . $this->siteUrl . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> 1.0 </priority></url>";
 		// 分类
-		$obj = $this->widget('Widget_Metas_Category_List');
-		if ($obj->have()) {
-			while ($obj->next()) {
-				$xmlhtml .= "<url><loc> " . $obj->permalink . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->cateChangefreq . " </changefreq><priority> " . $this->Sitemap->catePriority . " </priority></url>";
-			}
-		}
+		$xmlhtml = $this->retCate(true);
 		// 单页
 		$obj = $this->widget('Widget_Contents_Page_List');
 		if ($obj->have()) {
@@ -78,9 +76,9 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	 */
 	public function siteListXml()
 	{
-		$allSrat = Typecho_Widget::widget('Widget_Stat');
+		$ymd = gmdate("c");
 		// 文章总数
-		$postCount = $allSrat->publishedPostsNum;
+		$postCount = $this->stat->publishedPostsNum;
 		// 标签总数
 		$tagsCount =  $this->db->fetchObject($this->db->select(array('COUNT(mid)' => 'num'))
 			->from('table.metas')
@@ -88,33 +86,33 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		$tagsCount = intval($tagsCount);
 
 		// 主域名
-		$xmlhtml = "<url><loc> " . $this->siteUrl .  "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> 1.0 </priority></url>";
+		$xmlhtml = '';
 
 		// 文章
 		$postSize = ceil($postCount / $this->sitePageSize);
 		for ($i = 0; $i < $postSize; $i++) {
-			$xmlhtml .= "<url><loc> " . $this->siteUrl .  "sitemap/sitemap_post_" . ($i + 1) . ".xml</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> 1.0 </priority></url>";
+			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "sitemap/sitemap_post_" . ($i + 1) . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
 		}
 
 		// 标签
 		$tagsSize = ceil($tagsCount / $this->sitePageSize);
 		for ($i = 0; $i < $tagsSize; $i++) {
-			$xmlhtml .= "<url><loc> " . $this->siteUrl .  "sitemap/sitemap_tag_" . ($i + 1) . ".xml</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> 1.0 </priority></url>";
+			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "sitemap/sitemap_tag_" . ($i + 1) . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
 		}
 
 		// 搜索结果页
 		$tagsSize = ceil($tagsCount / $this->sitePageSize);
 		for ($i = 0; $i < $tagsSize; $i++) {
-			$xmlhtml .= "<url><loc> " . $this->siteUrl .  "sitemap/sitemap_search_" . ($i + 1) . ".xml</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> 1.0 </priority></url>";
+			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "sitemap/sitemap_search_" . ($i + 1) . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
 		}
 
 		// 独立页面
-		$xmlhtml .= "<url><loc> " . $this->siteUrl .  "sitemap/sitemap_pages.xml</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> 1.0 </priority></url>";
+		$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "sitemap/sitemap_pages.xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
 
 		// 首页翻页分页
 		$pageSize = ceil(($postCount / $this->pageSize) / $this->sitePageSize);
 		for ($i = 0; $i < $pageSize; $i++) {
-			$xmlhtml .= "<url><loc> " . $this->siteUrl .  "sitemap/sitemap_homepage_" . ($i + 1) . ".xml</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> 1.0 </priority></url>";
+			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "sitemap/sitemap_homepage_" . ($i + 1) . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
 		}
 
 		// 分类总数
@@ -123,10 +121,10 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			->order('table.metas.mid', Typecho_Db::SORT_DESC));
 		for ($i = 0; $i < count($cateList); $i++) {
 			// 分类分页
-			$xmlhtml .= "<url><loc> " . $this->siteUrl .  "sitemap/sitemap_catepage_" . $cateList[$i]['mid'] . ".xml</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> daily </changefreq><priority> 1.0 </priority></url>";
+			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "sitemap/sitemap_catepage_" . $cateList[$i]['mid'] . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
 		}
 
-		$this->showXml($xmlhtml);
+		$this->sitemapXml($xmlhtml);
 		$this->xmlJson([
 			'标签总数' => $tagsCount,
 			'标签页数' => $tagsSize,
@@ -163,6 +161,37 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		} else {
 			$this->checkData();
 		}
+	}
+
+
+	/**
+	 * 分类页
+	 * 
+	 */
+	public function retCate($ret = null)
+	{
+		$xmlhtml = '';
+		$obj = $this->widget('Widget_Metas_Category_List');
+		$html = '';
+		if ($obj->have()) {
+			while ($obj->next()) {
+				if (!in_array($obj->mid,$this->mid)) {
+					if($ret === 'html'){
+						$html .= '<li><a href="' . $obj->permalink . '">' . $obj->name . '</a></li>';
+					} else {
+						$xmlhtml .= "<url><loc> " . $obj->permalink . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->cateChangefreq . " </changefreq><priority> " . $this->Sitemap->catePriority . " </priority></url>";
+					}
+				}
+			}
+		}
+
+		if ($ret === 'html') {
+			return $html;
+		}
+		if ($ret) {
+			return $xmlhtml;
+		}
+		$this->showXml($xmlhtml);
 	}
 
 	/**
@@ -231,13 +260,13 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	 */
 	public function retHomePage($ret = null)
 	{
-		$postCount = Typecho_Widget::widget('Widget_Stat')->publishedPostsNum;
+		$postCount = $this->stat->publishedPostsNum;
 		$limit = $this->pageSize;
 		$pages = ceil($postCount / $limit);
 		$xmlhtml = '';
 		$priority = $this->Sitemap->HomePagePriority;
 		for ($i = 1; $i < $pages; $i++) {
-			$xmlhtml .= "<url><loc> " . $this->siteUrl . "page/" . $i . "/</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->HomeChangefreq . " </changefreq><priority> " . $priority . " </priority></url>";
+			$xmlhtml .= "<url><loc> " . $this->siteUrl . "page/" . $i . "/</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->HomePageChangefreq . " </changefreq><priority> " . $priority . " </priority></url>";
 		}
 
 		if ($ret) {
@@ -296,7 +325,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			$limit = 10000;
 		}
 		$tags = $this->db->fetchAll($this->db->select('slug,mid')->from('table.metas')
-			->where('table.metas.type = ?', 'tag')
+		->where('table.metas.type = ?', 'tag')
 			->page($page, $limit)
 			->order('table.metas.mid', Typecho_Db::SORT_ASC));
 		// 效验
@@ -320,7 +349,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 
 	/**
 	 * 文章
-	 * 
 	 */
 	public function retPost($ret = null)
 	{
@@ -331,7 +359,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			$page = 0;
 			$limit = 10000;
 		}
-		$content = $this->db->fetchAll($this->db->select('cid,slug,created')->from('table.contents')
+		$content = $this->db->fetchAll($this->db->select('cid,slug,created,title')->from('table.contents')
 			->where('table.contents.status = ?', 'publish')
 			->where('table.contents.type = ?', 'post')
 			->page($page, $limit)
@@ -339,6 +367,11 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		// 效验
 		if (!$ret) {
 			$this->checkData($content);
+		}
+
+		// 过滤隐藏分类
+		if ($this->mid) {
+			$content = $this->_setMiddata($content, $this->mid);
 		}
 		$priority = $this->Sitemap->postPriority;
 		$type = 'post';
@@ -352,6 +385,9 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			$pathinfo = $routeExists ? Typecho_Router::url($type, $v) : '#';
 			$permalink = Typecho_Common::url($pathinfo, $this->Options->index);
 			$xmlhtml .= "<url><loc> " . $permalink . "</loc><lastmod> " . date('Y-m-d H:i:s', $v['created']) . " </lastmod><changefreq> " . $this->Sitemap->postChangefreq . " </changefreq><priority> " . $priority . " </priority></url>";
+		}
+		if ($ret === 'html') {
+			return $content;
 		}
 		if ($ret) {
 			return $xmlhtml;
@@ -368,9 +404,20 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		$key = $this->request->key;
 		if ($key == 'apipost') {
 			$this->postOneUrl();
+		} else if ($key == 'ver') {
+			$this->postVer();
 		} else {
 			$this->checkData();
 		}
+	}
+
+	/**
+	 * ver
+	 * 
+	 */
+	public function postVer()
+	{
+		echo 'v' . $this->ver;
 	}
 
 	/**
@@ -408,6 +455,51 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	}
 
 
+	public function sitemaphtml()
+	{
+		$post = $this->retPost('html');
+		// $this->xmlJson($post);
+		$type = 'post';
+		$routeExists = (NULL != Typecho_Router::get($type));
+		$posthtml = '';
+		foreach ($post as $v) {
+			$v['slug'] = urlencode($v['slug']);
+			$v['date'] = new Typecho_Date($v['created']);
+			$v['year'] = $v['date']->year;
+			$v['month'] = $v['date']->month;
+			$v['day'] = $v['date']->day;
+			$pathinfo = $routeExists ? Typecho_Router::url($type, $v) : '#';
+			$permalink = Typecho_Common::url($pathinfo, $this->Options->index);
+			$posthtml .= '<li><a href="' . $permalink . '">' . $v['title'] . '</a></li>';
+		}
+		$pages = ceil($this->stat->publishedPostsNum / $this->pageSize);
+		$homepage = '';
+		for ($i = 1; $i < $pages; $i++) {
+			$homepage .= '<li><a href="' . $this->siteUrl . "page/" . $i . '/">第' . $i . '页 . ' . $this->Options->title . '</a></li>';
+		}
+
+		$cate = $this->retCate('html');
+		include 'Sitemap.php';
+	}
+
+	/**
+	 * sitemap loc
+	 * 
+	 */
+	public function sitemapXml($xmlhtml)
+	{
+		header("Content-type: text/xml");
+		echo '<?xml version="1.0" encoding="utf-8"?>';
+		echo '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+		echo $xmlhtml;
+		echo '</sitemapindex>';
+		exit();
+	}
+
+	/**
+	 * url loc
+	 * 
+	 */
 	public function showXml($xmlhtml)
 	{
 		header("Content-type: text/xml");
@@ -428,6 +520,10 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		exit(json_encode($ret, JSON_UNESCAPED_UNICODE));
 	}
 
+	/**
+	 * send
+	 * 
+	 */
 	public function sendBaiduPost($url)
 	{
 		$code = 1001;
@@ -468,12 +564,45 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		];
 	}
 
-	/*检测*/
-	public function checkData($data = null)
+	/*检测数据*/
+	private function checkData($data = null)
 	{
 		if (!$data) {
 			throw new Typecho_Widget_Exception(_t('页面不存在'), 404);
 		}
 		return true;
 	}
+
+// 转换mid为数组
+	private function _ckmid()
+	{
+		$mid = [];
+		if ($this->Sitemap->mid) {
+			$mid = explode(',', $this->Sitemap->mid);
+			if (!is_array($mid)) {
+				$mid = [];
+			}
+		}
+		return $mid;
+	}
+
+	// 隐藏指定分类下的所有文章
+	private function _setMiddata($content, $mid)
+	{
+		$mids = $this->db->fetchAll($this->db->select('cid,mid')->from('table.relationships')
+			->where('table.relationships.mid in ? ', $mid));
+		$mid = [];
+		foreach ($mids as $val) {
+			$mid[$val['cid']] = $val['cid'];
+		}
+		$data = [];
+		foreach ($content as $v) {
+			if(empty($mid[$v['cid']])){
+				$data[] = $v;
+			}
+		}
+		$content = null;
+		return $data;
+	}
 }
+	
