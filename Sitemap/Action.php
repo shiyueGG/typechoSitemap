@@ -532,8 +532,9 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		} else {
 			$client = Typecho_Http_Client::get();
 			$postMsg = '百度推送【失败】,';
+			$url = array($url);
 			if ($client) {
-				$client->setData(implode(PHP_EOL, [$url]))
+				$client->setData(implode(PHP_EOL, $url))
 					->setHeader('Content-Type', 'text/plain')
 					->setTimeout(30)
 					->send($this->Sitemap->apiUrl);
@@ -541,6 +542,18 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 				$status = $client->getResponseStatus();
 				$res = $client->getResponseBody();
 				$res = json_decode($res, true);
+			} else {
+				$status = 200;
+				try {
+					$res = $this->curlPost($url);
+				} catch (\Throwable $th) {
+					$res = [];
+				}
+			}
+
+			if (empty($res)) {
+				$postMsg = '百度推送【失败】，您的服务器不支持curl请求.或没有开启 allow_url_fopen 功能';
+			} else {
 				if ($status == 200 && $res['success'] == 1) {
 					$code = 1000;
 					$postMsg = '百度推送【成功】,今日剩余次数' . $res['remain'];
@@ -548,20 +561,37 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 				if (!empty($res['not_same_site'])) {
 					$postMsg .= '失败原因：不是本站url，推送的url和token所属的不一致，';
 				}
-
+	
 				if (!empty($res['message'])) {
 					$postMsg .= '失败原因：' . $res['message'] . '；请检查token是否正确；';
 				}
-			} else {
-				$postMsg = '百度推送【失败】，您的服务器不支持curl请求';
 			}
 		}
-
 		return [
 			'code' => $code,
 			'data' => $res,
 			'msg' => $postMsg
 		];
+	}
+
+
+
+
+
+	private function curlPost($url=null)
+	{
+		$ch = curl_init();
+		$options =  array(
+			CURLOPT_URL => $this->Sitemap->apiUrl,
+			CURLOPT_POST => true,
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_POSTFIELDS => implode("\n", $url),
+			CURLOPT_HTTPHEADER => array('Content-Type: text/plain'),
+		);
+		curl_setopt_array($ch, $options);
+		$result = curl_exec($ch);
+		$result = json_decode($result,true);
+		return $result;
 	}
 
 	/*检测数据*/
@@ -574,7 +604,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	}
 
 // 转换mid为数组
-	private function _ckmid()
+	public function _ckmid()
 	{
 		$mid = [];
 		if ($this->Sitemap->mid) {
@@ -605,4 +635,3 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		return $data;
 	}
 }
-	
