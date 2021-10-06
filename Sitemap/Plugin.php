@@ -6,7 +6,7 @@
  *
  * @package Sitemap
  * @author 十月 Oct.cn
- * @version 1.0.5
+ * @version 1.0.6
  * @link https://Oct.cn/view/66
  */
 class Sitemap_Plugin implements Typecho_Plugin_Interface
@@ -75,7 +75,7 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		$form->addItem($congifPriority);
 		$levelSite =  new Typecho_Widget_Helper_Form_Element_Radio('levelSite', array('1' => _t('不开启分级'), '0' => _t('开启分级')), '1', _t('是否分多个xml文件'), _t('百度不建议分级，但分级也可以收录。若数据量很大，打开缓慢时建议开启'));
 		$form->addInput($levelSite);
-		$sitePageSize =  new Typecho_Widget_Helper_Form_Element_Radio('sitePageSize', array('200' => _t('200'), '500' => _t('500'), '1000' => _t('1000')), '500', _t('每页最多可显示'), _t('仅在开启分级下生效，建议500条,超出自动分页'));
+		$sitePageSize =  new Typecho_Widget_Helper_Form_Element_Radio('sitePageSize', array('200' => _t('200'), '500' => _t('500'), '1000' => _t('1000'), '2000' => _t('2000'), '5000' => _t('5000'), '10000' => _t('10000')), '500', _t('每页最多可显示'), _t('仅在开启分级下生效，建议500条,超出自动分页'));
 		$form->addInput($sitePageSize);
 		// 优先级
 		$congifPriority = new Typecho_Widget_Helper_Layout('div', array('class=' => 'typecho-page-title'));
@@ -120,8 +120,14 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		/* 允许自动推送 */
 		if ($Sitemap->baiduPost == 1) {
 			$url = $widget->permalink;
-			$res = Typecho_Widget::widget('Sitemap_Action')->sendBaiduPost($url);
-			$postMsg = $res['msg'];
+			$mid = Typecho_Widget::widget('Sitemap_Action')->_ckmid();
+			if (in_array($widget->categories[0]['mid'],$mid)) {
+				$postMsg = '该分类设置了隐藏,不主动推送';
+			} else {
+				$res = Typecho_Widget::widget('Sitemap_Action')->sendBaiduPost($url);
+				$postMsg = $res['msg'];
+			}
+			// die();
 			$adminUrl = Typecho_Widget::widget('Widget_Options')->adminUrl;
 			header("refresh:0;url= " . $adminUrl . "manage-posts.php");
 			Typecho_Widget::widget('Widget_Notice')->set(_t('文章 "<a href="%s">%s</a>" 已经发布 ' . $postMsg, $url, $widget->title), 'success');
