@@ -11,7 +11,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	public function __construct($request, $response, $params = NULL)
 	{
 		parent::__construct($request, $response, $params);
-		$this->ver = '1.0.5';
+		$this->ver = '1.0.7';
 		$this->db = Typecho_Db::get();
 		$this->Options = Typecho_Widget::widget('Widget_Options');
 		$this->siteUrl = $this->Options->siteUrl;
@@ -175,8 +175,8 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		$html = '';
 		if ($obj->have()) {
 			while ($obj->next()) {
-				if (!in_array($obj->mid,$this->mid)) {
-					if($ret === 'html'){
+				if (!in_array($obj->mid, $this->mid)) {
+					if ($ret === 'html') {
 						$html .= '<li><a href="' . $obj->permalink . '">' . $obj->name . '</a></li>';
 					} else {
 						$xmlhtml .= "<url><loc> " . $obj->permalink . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->cateChangefreq . " </changefreq><priority> " . $this->Sitemap->catePriority . " </priority></url>";
@@ -325,7 +325,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			$limit = 10000;
 		}
 		$tags = $this->db->fetchAll($this->db->select('slug,mid')->from('table.metas')
-		->where('table.metas.type = ?', 'tag')
+			->where('table.metas.type = ?', 'tag')
 			->page($page, $limit)
 			->order('table.metas.mid', Typecho_Db::SORT_ASC));
 		// 效验
@@ -561,7 +561,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 				if (!empty($res['not_same_site'])) {
 					$postMsg .= '失败原因：不是本站url，推送的url和token所属的不一致，';
 				}
-	
+
 				if (!empty($res['message'])) {
 					$postMsg .= '失败原因：' . $res['message'] . '；请检查token是否正确；';
 				}
@@ -578,7 +578,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 
 
 
-	private function curlPost($url=null)
+	private function curlPost($url = null)
 	{
 		$ch = curl_init();
 		$options =  array(
@@ -590,7 +590,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		);
 		curl_setopt_array($ch, $options);
 		$result = curl_exec($ch);
-		$result = json_decode($result,true);
+		$result = json_decode($result, true);
 		return $result;
 	}
 
@@ -603,7 +603,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		return true;
 	}
 
-// 转换mid为数组
+	// 转换mid为数组
 	public function _ckmid()
 	{
 		$mid = [];
@@ -627,7 +627,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		}
 		$data = [];
 		foreach ($content as $v) {
-			if(empty($mid[$v['cid']])){
+			if (empty($mid[$v['cid']])) {
 				$data[] = $v;
 			}
 		}
