@@ -6,7 +6,7 @@
  *
  * @package Sitemap
  * @author 十月 Oct.cn
- * @version 1.0.6
+ * @version 1.0.7
  * @link https://Oct.cn/view/66
  */
 class Sitemap_Plugin implements Typecho_Plugin_Interface
@@ -116,20 +116,20 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 	 */
 	public static function render($contents, $widget)
 	{
-		$Sitemap = Typecho_Widget::widget('Widget_Options')->Plugin('Sitemap');
+		$options = Typecho_Widget::widget('Widget_Options');
+		$Sitemap = $options->Plugin('Sitemap');
 		/* 允许自动推送 */
 		if ($Sitemap->baiduPost == 1) {
 			$url = $widget->permalink;
 			$mid = Typecho_Widget::widget('Sitemap_Action')->_ckmid();
-			if (in_array($widget->categories[0]['mid'],$mid)) {
+			if (in_array($widget->categories[0]['mid'], $mid)) {
 				$postMsg = '该分类设置了隐藏,不主动推送';
 			} else {
 				$res = Typecho_Widget::widget('Sitemap_Action')->sendBaiduPost($url);
 				$postMsg = $res['msg'];
 			}
-			// die();
-			$adminUrl = Typecho_Widget::widget('Widget_Options')->adminUrl;
-			header("refresh:0;url= " . $adminUrl . "manage-posts.php");
+			$adminUrl = Typecho_Common::url('manage-posts.php', $options->adminUrl);
+			header("refresh:0;url= " . $adminUrl);
 			Typecho_Widget::widget('Widget_Notice')->set(_t('文章 "<a href="%s">%s</a>" 已经发布 ' . $postMsg, $url, $widget->title), 'success');
 			die();
 		}
