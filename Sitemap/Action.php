@@ -11,18 +11,17 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	public function __construct($request, $response, $params = NULL)
 	{
 		parent::__construct($request, $response, $params);
-		$this->ver = '1.0.7';
+		$this->ver = '1.0.8';
 		$this->db = Typecho_Db::get();
 		$this->Options = Typecho_Widget::widget('Widget_Options');
 		$this->siteUrl = $this->Options->siteUrl;
 		$this->Sitemap = $this->Options->Plugin('Sitemap');
 		$this->stat = Typecho_Widget::widget('Widget_Stat');
-		$siteStatus = $this->Sitemap->siteStatus;
 		$this->sitePageSize = $this->Sitemap->sitePageSize;
 		$this->pageSize = $this->Options->pageSize;
 		$this->ymd = date('Y-m-d', time());
 		$this->mid = $this->_ckmid();
-		if ($siteStatus == 0) {
+		if ($this->Sitemap->siteStatus == 0) {
 			// 关闭了sitemap
 			$this->checkData();
 		}
@@ -249,7 +248,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		// 分页
 		$count = ceil($count / $this->pageSize);
 		for ($i = 1; $i < $count; $i++) {
-			$xmlhtml .= "<url><loc> " . $data['permalink'] . "/" . $i . "/</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->CatePageChangefreq . " </changefreq><priority> " . $this->Sitemap->CatePagePriority . " </priority></url>";
+			$xmlhtml .= "<url><loc> " . $data['permalink'] . $i . "/</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->CatePageChangefreq . " </changefreq><priority> " . $this->Sitemap->CatePagePriority . " </priority></url>";
 		}
 		$this->showXml($xmlhtml);
 	}
@@ -355,15 +354,17 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		$page = $this->request->page;
 		$xmlhtml = '';
 		$limit =  $this->sitePageSize;
+		$order = Typecho_Db::SORT_ASC;
 		if ($ret) {
 			$page = 0;
 			$limit = 10000;
+			$order = Typecho_Db::SORT_DESC;
 		}
 		$content = $this->db->fetchAll($this->db->select('cid,slug,created,title')->from('table.contents')
 			->where('table.contents.status = ?', 'publish')
 			->where('table.contents.type = ?', 'post')
 			->page($page, $limit)
-			->order('table.contents.cid', Typecho_Db::SORT_ASC));
+			->order('table.contents.cid', $order));
 		// 效验
 		if (!$ret) {
 			$this->checkData($content);
@@ -490,7 +491,8 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	{
 		header("Content-type: text/xml");
 		echo '<?xml version="1.0" encoding="utf-8"?>';
-		echo '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+		echo '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"';
+		echo ' xmlns:mobile="http://www.sitemaps.org/schemas/sitemap/0.9">';
 		echo $xmlhtml;
 		echo '</sitemapindex>';
 		exit();
@@ -503,7 +505,9 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	public function showXml($xmlhtml)
 	{
 		header("Content-type: text/xml");
-		echo '<?xml version="1.0" encoding="utf-8"?><urlset>';
+		echo '<?xml version="1.0" encoding="utf-8"?>';
+		echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"';
+		echo ' xmlns:mobile="http://www.sitemaps.org/schemas/sitemap/0.9">';
 		echo $xmlhtml;
 		echo '</urlset>';
 		exit();
@@ -575,10 +579,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	}
 
 
-
-
-
-	private function curlPost($url = null)
+	public function curlPost($url = null,$code = false)
 	{
 		$ch = curl_init();
 		$options =  array(
@@ -591,6 +592,13 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		curl_setopt_array($ch, $options);
 		$result = curl_exec($ch);
 		$result = json_decode($result, true);
+		$httpCode = curl_getinfo($ch,CURLINFO_HTTP_CODE);
+		if ($code === true) {
+			return array(
+				'code' => $httpCode,
+				'data' => $result
+			);
+		}
 		return $result;
 	}
 
