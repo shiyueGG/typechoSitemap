@@ -127,7 +127,9 @@
             <a href="/"><strong><?php echo $this->Options->title ?></strong></a>
         </strong>
         <strong>
-            <a href="https://oct.cn/view/66?from=<?php echo $this->Options->siteUrl ?>/sitemap.html" target="_blank"><strong style="color:#999">by Sitemap v<?php echo $this->ver; ?> </strong></a>
+            <a href="https://oct.cn/view/66" target="_blank">
+            <strong style="color:#999">by Sitemap v<?php echo $this->ver; ?> </strong>
+            </a>
         </strong>
     </div>
 </body>
