@@ -6,7 +6,7 @@
  *
  * @package Sitemap
  * @author 十月 Oct.cn
- * @version 1.0.7
+ * @version 1.0.8
  * @link https://Oct.cn/view/66
  */
 class Sitemap_Plugin implements Typecho_Plugin_Interface
@@ -20,13 +20,27 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 	 */
 	public static function activate()
 	{
+		/*检测路由*/
+		$options = Typecho_Widget::widget('Widget_Options');
+		$check = 0;
+		foreach ($options->routingTable as $v) {
+			if (($v['url'] == '/sitemap.xml' || strpos($v['url'], 'sitemap.xml')) && $v['widget'] != 'Sitemap_Action') {
+				$check = 1;
+			    break;
+			}
+		}
+		if ($check === 1) {
+			$adminUrl = Typecho_Common::url('plugins.php', $options->adminUrl);
+			header("refresh:0;url= " . $adminUrl);
+			Typecho_Widget::widget('Widget_Notice')->set(_t('sitemap.xml路由已被占用,请先禁用其他相关插件'), 'success');
+			die();
+		}
 		Helper::addRoute('sitemap', '/sitemap.xml', 'Sitemap_Action', 'siteMap');
 		Helper::addRoute('sitemap.html', '/sitemap.html', 'Sitemap_Action', 'sitemaphtml');
 		Helper::addRoute('sitemap/gateway_[key]', '/sitemap/gateway_[key]', 'Sitemap_Action', 'siteName');
 		Helper::addRoute('sitemap/sitemap_[key]', '/sitemap/sitemap_[key].xml', 'Sitemap_Action', 'siteList');
 		Helper::addRoute('sitemap/sitemap_[key]_[page]', '/sitemap/sitemap_[key]_[page].xml', 'Sitemap_Action', 'siteList');
 		Typecho_Plugin::factory('Widget_Contents_Post_Edit')->finishPublish = array(__CLASS__, 'render');
-
 		return ('开启成功, 插件已经成功激活!请设置主动推送地址');
 	}
 	/**
@@ -122,7 +136,7 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		if ($Sitemap->baiduPost == 1) {
 			$url = $widget->permalink;
 			$mid = Typecho_Widget::widget('Sitemap_Action')->_ckmid();
-			if (in_array($widget->categories[0]['mid'], $mid)) {
+			if (in_array($widget->categories[0]['mid'],$mid)) {
 				$postMsg = '该分类设置了隐藏,不主动推送';
 			} else {
 				$res = Typecho_Widget::widget('Sitemap_Action')->sendBaiduPost($url);
