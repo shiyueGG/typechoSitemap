@@ -475,7 +475,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		}
 		$pages = ceil($this->stat->publishedPostsNum / $this->pageSize);
 		$homepage = '';
-		for ($i = 1; $i < $pages; $i++) {
+		for ($i = 1; $i <= $pages; $i++) {
 			$homepage .= '<li><a href="' . $this->siteUrl . "page/" . $i . '/">第' . $i . '页 . ' . $this->Options->title . '</a></li>';
 		}
 
