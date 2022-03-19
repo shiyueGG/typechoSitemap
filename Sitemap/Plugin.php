@@ -1,14 +1,14 @@
 <?php
-
 /**
- * 支持全站<a target="_blank" href="/sitemap.xml" style="color:#009688;font-weight:bold;">Sitemap.xml</a>、<a target="_blank" href="/sitemap.html" style="color:#009688;font-weight:bold;">Sitemap.html</a>、<strong style="color:#009688;">百度自动推送</strong>、<strong style="color:#009688;">API手动推送</strong><br>
+ * 支持全站<a target="_blank" href="/index.php/sitemap.xml" style="color:#009688;font-weight:bold;">Sitemap.xml</a>、<a target="_blank" href="/index.php/sitemap.html" style="color:#009688;font-weight:bold;">Sitemap.html</a>、<strong style="color:#009688;">百度自动推送</strong>、<strong style="color:#009688;">API手动推送</strong><br>
  * 设置教程请访问：<a style="font-weight:bold;" href="https://Oct.cn/view/66">教程地址>></a>
  *
  * @package Sitemap
  * @author 十月 Oct.cn
- * @version 1.0.8
+ * @version 1.1.0
  * @link https://Oct.cn/view/66
  */
+
 class Sitemap_Plugin implements Typecho_Plugin_Interface
 {
 	/**
@@ -23,17 +23,15 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		/*检测路由*/
 		$options = Typecho_Widget::widget('Widget_Options');
 		$check = 0;
+		$retmsg = '开启成功, 插件已经成功激活!请设置主动推送地址';
 		foreach ($options->routingTable as $v) {
 			if (($v['url'] == '/sitemap.xml' || strpos($v['url'], 'sitemap.xml')) && $v['widget'] != 'Sitemap_Action') {
 				$check = 1;
-			    break;
+				break;
 			}
 		}
 		if ($check === 1) {
-			$adminUrl = Typecho_Common::url('plugins.php', $options->adminUrl);
-			header("refresh:0;url= " . $adminUrl);
-			Typecho_Widget::widget('Widget_Notice')->set(_t('sitemap.xml路由已被占用,请先禁用其他相关插件'), 'success');
-			die();
+			$retmsg = '开启成功，<b style="color:red">插件路由被占用。sitemap.xml若无法正确使用，</b>请禁用其他相关插件';
 		}
 		Helper::addRoute('sitemap', '/sitemap.xml', 'Sitemap_Action', 'siteMap');
 		Helper::addRoute('sitemap.html', '/sitemap.html', 'Sitemap_Action', 'sitemaphtml');
@@ -41,7 +39,7 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		Helper::addRoute('sitemap/sitemap_[key]', '/sitemap/sitemap_[key].xml', 'Sitemap_Action', 'siteList');
 		Helper::addRoute('sitemap/sitemap_[key]_[page]', '/sitemap/sitemap_[key]_[page].xml', 'Sitemap_Action', 'siteList');
 		Typecho_Plugin::factory('Widget_Contents_Post_Edit')->finishPublish = array(__CLASS__, 'render');
-		return ('开启成功, 插件已经成功激活!请设置主动推送地址');
+		return ($retmsg);
 	}
 	/**
 	 * 禁用插件方法,如果禁用失败,直接抛出异常
@@ -82,7 +80,7 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		$mid = new Typecho_Widget_Helper_Form_Element_Text('mid', NULL, null, _t('填写不显示的分类mid'), _t('多个请用英文逗号,隔开。如:1,2 设置后将不输出该分类下的文章。mid获取方式：点击分类->编辑->查看网址后面的mid数字'), ['class' => 'mini']);
 		$mid->input->setAttribute('class', 'mini');
 		$form->addInput($mid);
-		// 分级
+		// 分级 由于百度已取消对二级sitemap支持 该功能已无效果
 		$congifPriority = new Typecho_Widget_Helper_Layout('div', array('class=' => 'typecho-page-title'));
 		$congifPriority->html('<h2>分级设置</h2>');
 		$congifPriority->setAttribute('style', 'border-bottom:solid 1px #cfcfcf');
@@ -93,7 +91,7 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		$form->addInput($sitePageSize);
 		// 优先级
 		$congifPriority = new Typecho_Widget_Helper_Layout('div', array('class=' => 'typecho-page-title'));
-		$congifPriority->html('<h2>优先级和更新频率控制</h2>');
+		$congifPriority->html('<h2>优先级、更新频率、显示控制</h2>');
 		$congifPriority->setAttribute('style', 'border-bottom:solid 1px #cfcfcf');
 		$form->addItem($congifPriority);
 		// 分类
@@ -121,7 +119,6 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 	public static function personalConfig(Typecho_Widget_Helper_Form $form)
 	{
 	}
-
 	/**
 	 * 插件实现方法
 	 * 
@@ -136,7 +133,7 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		if ($Sitemap->baiduPost == 1) {
 			$url = $widget->permalink;
 			$mid = Typecho_Widget::widget('Sitemap_Action')->_ckmid();
-			if (in_array($widget->categories[0]['mid'],$mid)) {
+			if (in_array($widget->categories[0]['mid'], $mid)) {
 				$postMsg = '该分类设置了隐藏,不主动推送';
 			} else {
 				$res = Typecho_Widget::widget('Sitemap_Action')->sendBaiduPost($url);
@@ -148,13 +145,13 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 			die();
 		}
 	}
-
 	/**
 	 * 封装方法
 	 */
 	private static function _addInput($form, $name, $title, $changefreq, $priority)
 	{
 		$c = array(
+			'none' => _t('不显示'),
 			'always' => _t('always(经常)'),
 			'daily' => _t('daily(每天)'),
 			'weekly' => _t('weekly(每周)'),
