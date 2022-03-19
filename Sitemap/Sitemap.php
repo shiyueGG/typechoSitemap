@@ -68,67 +68,76 @@
 
 <body vlink="#333333" link="#333333">
     <h2 style="text-align: center; margin-top: 20px"><?php echo $this->Options->title ?> SiteMap </h2>
-    <div id="nav"><a href="/"><strong><?php echo $this->Options->title ?></strong></a> &raquo; <a href="/sitemap.html">站点地图</a></div>
+    <div id="nav"><a href="/"><strong><?php echo $this->Options->title ?></strong></a> &raquo; <a href="<?php $this->siteUrl(); ?>/sitemap.html">站点地图</a></div>
     <div id="content">
-        <div>
-            <h3>首页</h3>
-            <ul>
-                <table width='100%' border='0' cellspacing='0' cellpadding='0'>
-                    <td>
-                    <?php echo $posthtml; ?>
-                    </td>
-                </table>
-            </ul>
-        </div>
-        <div>
-            <h3>独立页面</h3>
-            <ul>
-                <table width='100%' border='0' cellspacing='0' cellpadding='0'>
-                    <td>
-                        <?php $this->widget('Widget_Contents_Page_List', 'pageSize=100')->parse('<li><a href="{permalink}">{title}</a></li>'); ?>
-                    </td>
-                </table>
-            </ul>
-        </div>
-        <div>
-            <h3>分类页面</h3>
-            <ul>
-                <table width='100%' border='0' cellspacing='0' cellpadding='0'>
-                    <td>
-                    <?php echo $cate; ?>
-                    </td>
-                </table>
-            </ul>
-        </div>
-        <div>
-            <h3>标签页面</h3>
-            <ul>
-                <table width='100%' border='0' cellspacing='0' cellpadding='0'>
-                    <td>
-                        <?php $this->widget('Widget_Metas_Tag_Cloud', 'pageSize=1000')->parse('<li><a href="{permalink}">{name}</a> ({count})</li>'); ?>
-                    </td>
-                </table>
-            </ul>
-        </div>
-        <div>
-            <h3>总页数</h3>
-            <ul>
-                <table width='100%' border='0' cellspacing='0' cellpadding='0'>
-                    <td>
-                        <?php echo $homepage; ?>
-                    </td>
-                </table>
-            </ul>
-        </div>
+        <?php if ($this->Sitemap->postChangefreq != 'none') { ?>
+            <div>
+                <h3>文章</h3>
+                <ul>
+                    <table width='100%' border='0' cellspacing='0' cellpadding='0'>
+                        <td>
+                            <?php echo $posthtml; ?>
+                        </td>
+                    </table>
+                </ul>
+            </div>
+        <?php } ?>
+        <?php if ($this->Sitemap->pagesChangefreq != 'none') { ?>
+            <div>
+                <h3>独立页面</h3>
+                <ul>
+                    <table width='100%' border='0' cellspacing='0' cellpadding='0'>
+                        <td>
+                            <?php $this->widget('Widget_Contents_Page_List', 'pageSize=100')->parse('<li><a href="{permalink}">{title}</a></li>'); ?>
+                        </td>
+                    </table>
+                </ul>
+            </div>
+        <?php } ?>
+        <?php if ($this->Sitemap->cateChangefreq != 'none') { ?>
+            <div>
+                <h3>分类页面</h3>
+                <ul>
+                    <table width='100%' border='0' cellspacing='0' cellpadding='0'>
+                        <td>
+                            <?php echo $cate; ?>
+                        </td>
+                    </table>
+                </ul>
+            </div>
+        <?php } ?>
+        <?php if ($this->Sitemap->tagChangefreq != 'none') { ?>
+            <div>
+                <h3>标签页面</h3>
+                <ul>
+                    <table width='100%' border='0' cellspacing='0' cellpadding='0'>
+                        <td>
+                            <?php $this->widget('Widget_Metas_Tag_Cloud', 'pageSize=1000')->parse('<li><a href="{permalink}">{name}</a> ({count})</li>'); ?>
+                        </td>
+                    </table>
+                </ul>
+            </div>
+        <?php } ?>
+        <?php if ($this->Sitemap->HomePageChangefreq != 'none') { ?>
+            <div>
+                <h3>总页数</h3>
+                <ul>
+                    <table width='100%' border='0' cellspacing='0' cellpadding='0'>
+                        <td>
+                            <?php echo $homepage; ?>
+                        </td>
+                    </table>
+                </ul>
+            </div>
+        <?php } ?>
     </div>
-
     <div id="footer">查看网站首页:
         <strong style="flex:1;">
             <a href="/"><strong><?php echo $this->Options->title ?></strong></a>
         </strong>
         <strong>
             <a href="https://oct.cn/view/66" target="_blank">
-            <strong style="color:#999">by Sitemap v<?php echo $this->ver; ?> </strong>
+                <strong style="color:#999">by Sitemap v<?php echo $this->ver; ?> </strong>
             </a>
         </strong>
     </div>
