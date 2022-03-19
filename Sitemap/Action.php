@@ -3,18 +3,19 @@
 /**
  * Sitemap Plugin
  *
- * @copyright  Copyright (c) 2021 十月 (https://Oct.cn)
+ * @copyright  Copyright (c) 2022 十月 (https://Oct.cn)
  * 
  */
+
 class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 {
 	public function __construct($request, $response, $params = NULL)
 	{
 		parent::__construct($request, $response, $params);
-		$this->ver = '1.0.8';
+		$this->ver = '1.1.0';
 		$this->db = Typecho_Db::get();
 		$this->Options = Typecho_Widget::widget('Widget_Options');
-		$this->siteUrl = $this->Options->siteUrl;
+		$this->siteUrl = $this->Options->index;
 		$this->Sitemap = $this->Options->Plugin('Sitemap');
 		$this->stat = Typecho_Widget::widget('Widget_Stat');
 		$this->sitePageSize = $this->Sitemap->sitePageSize;
@@ -26,7 +27,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			$this->checkData();
 		}
 	}
-
 	/**
 	 * sitemap
 	 * 
@@ -34,14 +34,13 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	public function siteMap()
 	{
 		// 不分级
-		if ($this->Sitemap->levelSite == 1) {
-			$this->levelSiteList();
-		} else {
-			$this->siteListXml();
-		}
+		$this->levelSiteList();
+		// if ($this->Sitemap->levelSite == 1) {
+		// 	$this->levelSiteList();
+		// } else {
+		// 	$this->siteListXml();
+		// }
 	}
-
-
 	/**
 	 * 不分级
 	 * 
@@ -52,10 +51,12 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		// 分类
 		$xmlhtml = $this->retCate(true);
 		// 单页
-		$obj = $this->widget('Widget_Contents_Page_List');
-		if ($obj->have()) {
-			while ($obj->next()) {
-				$xmlhtml .= "<url><loc> " . $obj->permalink . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->pagesChangefreq . " </changefreq><priority> " . $this->Sitemap->pagesPriority . " </priority></url>";
+		if ($this->Sitemap->pagesChangefreq != 'none') {
+			$obj = $this->widget('Widget_Contents_Page_List');
+			if ($obj->have()) {
+				while ($obj->next()) {
+					$xmlhtml .= "<url><loc> " . $obj->permalink . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->pagesChangefreq . " </changefreq><priority> " . $this->Sitemap->pagesPriority . " </priority></url>";
+				}
 			}
 		}
 		// 标签
@@ -68,7 +69,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		$xmlhtml .= $this->retHomePage(true);
 		$this->showXml($xmlhtml);
 	}
-
 	/**
 	 * 分级
 	 * 
@@ -83,46 +83,38 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			->from('table.metas')
 			->where('table.metas.type = ?', 'tag'))->num;
 		$tagsCount = intval($tagsCount);
-
 		// 主域名
 		$xmlhtml = '';
-
 		// 文章
 		$postSize = ceil($postCount / $this->sitePageSize);
 		for ($i = 0; $i < $postSize; $i++) {
-			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "sitemap/sitemap_post_" . ($i + 1) . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
+			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "/sitemap/sitemap_post_" . ($i + 1) . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
 		}
-
 		// 标签
 		$tagsSize = ceil($tagsCount / $this->sitePageSize);
 		for ($i = 0; $i < $tagsSize; $i++) {
-			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "sitemap/sitemap_tag_" . ($i + 1) . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
+			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "/sitemap/sitemap_tag_" . ($i + 1) . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
 		}
-
 		// 搜索结果页
 		$tagsSize = ceil($tagsCount / $this->sitePageSize);
 		for ($i = 0; $i < $tagsSize; $i++) {
-			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "sitemap/sitemap_search_" . ($i + 1) . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
+			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "/sitemap/sitemap_search_" . ($i + 1) . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
 		}
-
 		// 独立页面
-		$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "sitemap/sitemap_pages.xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
-
+		$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "/sitemap/sitemap_pages.xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
 		// 首页翻页分页
 		$pageSize = ceil(($postCount / $this->pageSize) / $this->sitePageSize);
 		for ($i = 0; $i < $pageSize; $i++) {
-			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "sitemap/sitemap_homepage_" . ($i + 1) . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
+			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "/sitemap/sitemap_homepage_" . ($i + 1) . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
 		}
-
 		// 分类总数
 		$cateList = $this->db->fetchAll($this->db->select('mid')->from('table.metas')
 			->where('table.metas.type = ?', 'category')
 			->order('table.metas.mid', Typecho_Db::SORT_DESC));
 		for ($i = 0; $i < count($cateList); $i++) {
 			// 分类分页
-			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "sitemap/sitemap_catepage_" . $cateList[$i]['mid'] . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
+			$xmlhtml .= "<sitemap><loc> " . $this->siteUrl .  "/sitemap/sitemap_catepage_" . $cateList[$i]['mid'] . ".xml </loc><lastmod> " . $ymd . " </lastmod></sitemap>";
 		}
-
 		$this->sitemapXml($xmlhtml);
 		$this->xmlJson([
 			'标签总数' => $tagsCount,
@@ -134,8 +126,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			'分类总数' => $cateList,
 		]);
 	}
-
-
 	/**
 	 * 定向xml
 	 * 
@@ -161,14 +151,15 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			$this->checkData();
 		}
 	}
-
-
 	/**
 	 * 分类页
 	 * 
 	 */
 	public function retCate($ret = null)
 	{
+		if ($this->Sitemap->cateChangefreq == 'none') {
+			return '';
+		}
 		$xmlhtml = '';
 		$obj = $this->widget('Widget_Metas_Category_List');
 		$html = '';
@@ -183,7 +174,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 				}
 			}
 		}
-
 		if ($ret === 'html') {
 			return $html;
 		}
@@ -214,7 +204,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		}
 		$this->showXml($xmlhtml);
 	}
-
 	/**
 	 * 指定分类下的页数
 	 * 
@@ -242,9 +231,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 				}
 			}
 		}
-
 		$xmlhtml = "<url><loc> " . $data['permalink'] . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->cateChangefreq . " </changefreq><priority> " . $this->Sitemap->catePriority . " </priority></url>";
-
 		// 分页
 		$count = ceil($count / $this->pageSize);
 		for ($i = 1; $i < $count; $i++) {
@@ -252,34 +239,37 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		}
 		$this->showXml($xmlhtml);
 	}
-
 	/**
 	 * 首页分页
 	 * 
 	 */
 	public function retHomePage($ret = null)
 	{
+		if ($this->Sitemap->HomePageChangefreq == 'none') {
+			return '';
+		}
 		$postCount = $this->stat->publishedPostsNum;
 		$limit = $this->pageSize;
 		$pages = ceil($postCount / $limit);
 		$xmlhtml = '';
 		$priority = $this->Sitemap->HomePagePriority;
 		for ($i = 1; $i < $pages; $i++) {
-			$xmlhtml .= "<url><loc> " . $this->siteUrl . "page/" . $i . "/</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->HomePageChangefreq . " </changefreq><priority> " . $priority . " </priority></url>";
+			$xmlhtml .= "<url><loc> " . $this->siteUrl . "/" . "page/" . $i . "/</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->HomePageChangefreq . " </changefreq><priority> " . $priority . " </priority></url>";
 		}
-
 		if ($ret) {
 			return $xmlhtml;
 		}
 		$this->showXml($xmlhtml);
 	}
-
 	/**
 	 * tag
 	 * 
 	 */
 	public function retTag($ret = null)
 	{
+		if ($this->Sitemap->tagChangefreq == 'none') {
+			return '';
+		}
 		$page = $this->request->page;
 		$xmlhtml = '';
 		$limit = $this->sitePageSize;
@@ -303,19 +293,20 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			$permalink = Typecho_Common::url($pathinfo, $this->Options->index);
 			$xmlhtml .= "<url><loc> " . $permalink . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->tagChangefreq . " </changefreq><priority> " . $this->Sitemap->tagPriority . " </priority></url>";
 		}
-
 		if ($ret) {
 			return $xmlhtml;
 		}
 		$this->showXml($xmlhtml);
 	}
-
 	/**
 	 * 搜索结果页
 	 * 
 	 */
 	public function retSearch($ret = null)
 	{
+		if ($this->Sitemap->searchChangefreq == 'none') {
+			return '';
+		}
 		$page = $this->request->page;
 		$xmlhtml = '';
 		$limit = $this->sitePageSize;
@@ -339,18 +330,19 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			$permalink = Typecho_Common::url($pathinfo, $this->Options->index);
 			$xmlhtml .= "<url><loc> " . $permalink . "</loc><lastmod> " . $this->ymd . " </lastmod><changefreq> " . $this->Sitemap->searchChangefreq . " </changefreq><priority> " . $this->Sitemap->searchPriority . " </priority></url>";
 		}
-
 		if ($ret) {
 			return $xmlhtml;
 		}
 		$this->showXml($xmlhtml);
 	}
-
 	/**
 	 * 文章
 	 */
 	public function retPost($ret = null)
 	{
+		if ($this->Sitemap->postChangefreq == 'none') {
+			return '';
+		}
 		$page = $this->request->page;
 		$xmlhtml = '';
 		$limit =  $this->sitePageSize;
@@ -369,7 +361,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		if (!$ret) {
 			$this->checkData($content);
 		}
-
 		// 过滤隐藏分类
 		if ($this->mid) {
 			$content = $this->_setMiddata($content, $this->mid);
@@ -395,7 +386,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		}
 		$this->showXml($xmlhtml);
 	}
-
 	/**
 	 * api网关方法
 	 * 
@@ -411,7 +401,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			$this->checkData();
 		}
 	}
-
 	/**
 	 * ver
 	 * 
@@ -420,7 +409,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	{
 		echo 'v' . $this->ver;
 	}
-
 	/**
 	 * 通过api推送一个文章url
 	 * 
@@ -434,7 +422,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		if ($key !== $this->Sitemap->apiPostToken) {
 			$this->xmlJson(null, 'key不正确', 1001);
 		}
-
 		$url = $_GET['url'];
 		if (!$url) {
 			$this->xmlJson(null, 'url不能为空', 1001);
@@ -444,45 +431,39 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		if (!preg_match($preg, $url)) {
 			$this->xmlJson(null, 'url不合法', 1001);
 		}
-
 		$res = $this->sendBaiduPost($url);
 		$this->xmlJson($res['data'], $res['msg'], $res['code']);
 	}
-
-
 	public function action()
 	{
 		$this->widget('Widget_User')->pass('administrator');
 	}
-
-
 	public function sitemaphtml()
 	{
 		$post = $this->retPost('html');
-		// $this->xmlJson($post);
-		$type = 'post';
-		$routeExists = (NULL != Typecho_Router::get($type));
-		$posthtml = '';
-		foreach ($post as $v) {
-			$v['slug'] = urlencode($v['slug']);
-			$v['date'] = new Typecho_Date($v['created']);
-			$v['year'] = $v['date']->year;
-			$v['month'] = $v['date']->month;
-			$v['day'] = $v['date']->day;
-			$pathinfo = $routeExists ? Typecho_Router::url($type, $v) : '#';
-			$permalink = Typecho_Common::url($pathinfo, $this->Options->index);
-			$posthtml .= '<li><a href="' . $permalink . '">' . $v['title'] . '</a></li>';
+		if ($post) {
+			$type = 'post';
+			$routeExists = (NULL != Typecho_Router::get($type));
+			$posthtml = '';
+			foreach ($post as $v) {
+				$v['slug'] = urlencode($v['slug']);
+				$v['date'] = new Typecho_Date($v['created']);
+				$v['year'] = $v['date']->year;
+				$v['month'] = $v['date']->month;
+				$v['day'] = $v['date']->day;
+				$pathinfo = $routeExists ? Typecho_Router::url($type, $v) : '#';
+				$permalink = Typecho_Common::url($pathinfo, $this->Options->index);
+				$posthtml .= '<li><a href="' . $permalink . '">' . $v['title'] . '</a></li>';
+			}
 		}
 		$pages = ceil($this->stat->publishedPostsNum / $this->pageSize);
 		$homepage = '';
 		for ($i = 1; $i <= $pages; $i++) {
-			$homepage .= '<li><a href="' . $this->siteUrl . "page/" . $i . '/">第' . $i . '页 . ' . $this->Options->title . '</a></li>';
+			$homepage .= '<li><a href="' . $this->siteUrl . "/" . "page/" . $i . '/">第' . $i . '页 . ' . $this->Options->title . '</a></li>';
 		}
-
 		$cate = $this->retCate('html');
 		include 'Sitemap.php';
 	}
-
 	/**
 	 * sitemap loc
 	 * 
@@ -497,7 +478,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		echo '</sitemapindex>';
 		exit();
 	}
-
 	/**
 	 * url loc
 	 * 
@@ -512,7 +492,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		echo '</urlset>';
 		exit();
 	}
-
 	public function xmlJson($data = null, $msg = '获取成功', $code = 1000)
 	{
 		header('Content-Type:application/json; charset=utf-8');
@@ -523,7 +502,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		];
 		exit(json_encode($ret, JSON_UNESCAPED_UNICODE));
 	}
-
 	/**
 	 * send
 	 * 
@@ -542,7 +520,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 					->setHeader('Content-Type', 'text/plain')
 					->setTimeout(30)
 					->send($this->Sitemap->apiUrl);
-
 				$status = $client->getResponseStatus();
 				$res = $client->getResponseBody();
 				$res = json_decode($res, true);
@@ -554,7 +531,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 					$res = [];
 				}
 			}
-
 			if (empty($res)) {
 				$postMsg = '百度推送【失败】，您的服务器不支持curl请求.或没有开启 allow_url_fopen 功能';
 			} else {
@@ -565,7 +541,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 				if (!empty($res['not_same_site'])) {
 					$postMsg .= '失败原因：不是本站url，推送的url和token所属的不一致，';
 				}
-
 				if (!empty($res['message'])) {
 					$postMsg .= '失败原因：' . $res['message'] . '；请检查token是否正确；';
 				}
@@ -577,9 +552,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			'msg' => $postMsg
 		];
 	}
-
-
-	public function curlPost($url = null,$code = false)
+	public function curlPost($url = null, $code = false)
 	{
 		$ch = curl_init();
 		$options =  array(
@@ -592,7 +565,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		curl_setopt_array($ch, $options);
 		$result = curl_exec($ch);
 		$result = json_decode($result, true);
-		$httpCode = curl_getinfo($ch,CURLINFO_HTTP_CODE);
+		$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		if ($code === true) {
 			return array(
 				'code' => $httpCode,
@@ -601,7 +574,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		}
 		return $result;
 	}
-
 	/*检测数据*/
 	private function checkData($data = null)
 	{
@@ -610,7 +582,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		}
 		return true;
 	}
-
 	// 转换mid为数组
 	public function _ckmid()
 	{
@@ -623,7 +594,6 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		}
 		return $mid;
 	}
-
 	// 隐藏指定分类下的所有文章
 	private function _setMiddata($content, $mid)
 	{
