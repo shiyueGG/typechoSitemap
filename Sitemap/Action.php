@@ -12,7 +12,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	public function __construct($request, $response, $params = NULL)
 	{
 		parent::__construct($request, $response, $params);
-		$this->ver = '1.1.0';
+		$this->ver = '1.1.1';
 		$this->db = Typecho_Db::get();
 		$this->Options = Typecho_Widget::widget('Widget_Options');
 		$this->siteUrl = $this->Options->index;
@@ -343,49 +343,31 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		if ($this->Sitemap->postChangefreq == 'none') {
 			return '';
 		}
-		$page = $this->request->page;
 		$xmlhtml = '';
-		$limit =  $this->sitePageSize;
-		$order = Typecho_Db::SORT_ASC;
-		if ($ret) {
-			$page = 0;
-			$limit = 10000;
-			$order = Typecho_Db::SORT_DESC;
-		}
-		$content = $this->db->fetchAll($this->db->select('cid,slug,created,title')->from('table.contents')
-			->where('table.contents.status = ?', 'publish')
-			->where('table.contents.type = ?', 'post')
-			->page($page, $limit)
-			->order('table.contents.cid', $order));
-		// 效验
-		if (!$ret) {
-			$this->checkData($content);
-		}
-		// 过滤隐藏分类
-		if ($this->mid) {
-			$content = $this->_setMiddata($content, $this->mid);
-		}
+		$reshtml = '';
+		$content = Typecho_Widget::widget('Widget_Contents_Post_Recent', 'pageSize=' . $this->Sitemap->sitePageSize);
 		$priority = $this->Sitemap->postPriority;
-		$type = 'post';
-		$routeExists = (NULL != Typecho_Router::get($type));
-		foreach ($content as $v) {
-			$v['slug'] = urlencode($v['slug']);
-			$v['date'] = new Typecho_Date($v['created']);
-			$v['year'] = $v['date']->year;
-			$v['month'] = $v['date']->month;
-			$v['day'] = $v['date']->day;
-			$pathinfo = $routeExists ? Typecho_Router::url($type, $v) : '#';
-			$permalink = Typecho_Common::url($pathinfo, $this->Options->index);
-			$xmlhtml .= "<url><loc> " . $permalink . "</loc><lastmod> " . date('Y-m-d H:i:s', $v['created']) . " </lastmod><changefreq> " . $this->Sitemap->postChangefreq . " </changefreq><priority> " . $priority . " </priority></url>";
-		}
 		if ($ret === 'html') {
-			return $content;
+			while ($content->next()) {
+				// 过滤隐藏分类
+				if (intval($this->mid[0]) != intval($content->categories[0]['mid'])) {
+					$reshtml .= '<li><a href="' . $content->permalink . '">' . $content->title . '</a></li>';
+				}
+			}
+			return $reshtml;
+		}
+		while ($content->next()) {
+			// 过滤隐藏分类
+			if (intval($this->mid[0]) != intval($content->categories[0]['mid'])) {
+				$xmlhtml .= "<url><loc> " . $content->permalink . "</loc><lastmod> " . date('Y-m-d H:i:s', $content->created) . " </lastmod><changefreq> " . $this->Sitemap->postChangefreq . " </changefreq><priority> " . $priority . " </priority></url>";
+			}
 		}
 		if ($ret) {
 			return $xmlhtml;
 		}
 		$this->showXml($xmlhtml);
 	}
+
 	/**
 	 * api网关方法
 	 * 
@@ -409,6 +391,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 	{
 		echo 'v' . $this->ver;
 	}
+
 	/**
 	 * 通过api推送一个文章url
 	 * 
@@ -434,28 +417,18 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		$res = $this->sendBaiduPost($url);
 		$this->xmlJson($res['data'], $res['msg'], $res['code']);
 	}
+
 	public function action()
 	{
 		$this->widget('Widget_User')->pass('administrator');
 	}
+	/**
+	 * sitemap html
+	 * 
+	 */
 	public function sitemaphtml()
 	{
-		$post = $this->retPost('html');
-		if ($post) {
-			$type = 'post';
-			$routeExists = (NULL != Typecho_Router::get($type));
-			$posthtml = '';
-			foreach ($post as $v) {
-				$v['slug'] = urlencode($v['slug']);
-				$v['date'] = new Typecho_Date($v['created']);
-				$v['year'] = $v['date']->year;
-				$v['month'] = $v['date']->month;
-				$v['day'] = $v['date']->day;
-				$pathinfo = $routeExists ? Typecho_Router::url($type, $v) : '#';
-				$permalink = Typecho_Common::url($pathinfo, $this->Options->index);
-				$posthtml .= '<li><a href="' . $permalink . '">' . $v['title'] . '</a></li>';
-			}
-		}
+		$posthtml = $this->retPost('html');
 		$pages = ceil($this->stat->publishedPostsNum / $this->pageSize);
 		$homepage = '';
 		for ($i = 1; $i <= $pages; $i++) {
@@ -464,6 +437,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		$cate = $this->retCate('html');
 		include 'Sitemap.php';
 	}
+
 	/**
 	 * sitemap loc
 	 * 
