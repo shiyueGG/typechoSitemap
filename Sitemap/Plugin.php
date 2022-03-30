@@ -5,7 +5,7 @@
  *
  * @package Sitemap
  * @author 十月 Oct.cn
- * @version 1.1.0
+ * @version 1.1.1
  * @link https://Oct.cn/view/66
  */
 
@@ -85,9 +85,9 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		$congifPriority->html('<h2>分级设置</h2>');
 		$congifPriority->setAttribute('style', 'border-bottom:solid 1px #cfcfcf');
 		$form->addItem($congifPriority);
-		$levelSite =  new Typecho_Widget_Helper_Form_Element_Radio('levelSite', array('1' => _t('不开启分级'), '0' => _t('开启分级')), '1', _t('是否分多个xml文件'), _t('百度不建议分级，但分级也可以收录。若数据量很大，打开缓慢时建议开启'));
+		$levelSite =  new Typecho_Widget_Helper_Form_Element_Radio('levelSite', array('1' => _t('不开启分级'), '0' => _t('开启分级')), '1', _t('是否分多个xml文件'), _t('百度不再收录分级，该功能已取消。设置不生效'));
 		$form->addInput($levelSite);
-		$sitePageSize =  new Typecho_Widget_Helper_Form_Element_Radio('sitePageSize', array('200' => _t('200'), '500' => _t('500'), '1000' => _t('1000'), '2000' => _t('2000'), '5000' => _t('5000'), '10000' => _t('10000')), '500', _t('每页最多可显示'), _t('仅在开启分级下生效，建议500条,超出自动分页'));
+		$sitePageSize =  new Typecho_Widget_Helper_Form_Element_Radio('sitePageSize', array('200' => _t('200'), '500' => _t('500'), '1000' => _t('1000'), '2000' => _t('2000'), '5000' => _t('5000'), '10000' => _t('10000')), '500', _t('文章最多可显示多少条'), _t('数量越大加载sitemap.xml耗时越大，建议500条,优先显示最新'));
 		$form->addInput($sitePageSize);
 		// 优先级
 		$congifPriority = new Typecho_Widget_Helper_Layout('div', array('class=' => 'typecho-page-title'));
