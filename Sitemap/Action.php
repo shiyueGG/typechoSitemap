@@ -358,7 +358,7 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 		}
 		while ($content->next()) {
 			// 过滤隐藏分类
-			if (intval($this->mid[0]) != intval($content->categories[0]['mid'])) {
+			if (isset($this->mid[0]) && intval($this->mid[0]) != intval($content->categories[0]['mid'])) {
 				$xmlhtml .= "<url><loc> " . $content->permalink . "</loc><lastmod> " . date('Y-m-d H:i:s', $content->created) . " </lastmod><changefreq> " . $this->Sitemap->postChangefreq . " </changefreq><priority> " . $priority . " </priority></url>";
 			}
 		}
