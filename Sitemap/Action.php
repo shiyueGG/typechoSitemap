@@ -526,6 +526,94 @@ class Sitemap_Action extends Typecho_Widget implements Widget_Interface_Do
 			'msg' => $postMsg
 		];
 	}
+	/**
+	 * send bing (IndexNow)
+	 *
+	 */
+	public function sendBingPost($url)
+	{
+		$code = 1001;
+		if (empty($this->Sitemap->bingApiKey)) {
+			$postMsg = 'Bing推送【失败】,请先设置IndexNow密钥(Key)；';
+		} else {
+			$postMsg = 'Bing推送【失败】,';
+			$apiUrl = $this->Sitemap->bingApiUrl;
+			if (empty($apiUrl)) {
+				$apiUrl = 'https://www.bing.com/indexnow';
+			}
+			try {
+				$client = Typecho_Http_Client::get();
+				if ($client) {
+					$data = json_encode([
+						'host' => parse_url($this->siteUrl, PHP_URL_HOST),
+						'key' => $this->Sitemap->bingApiKey,
+						'urlList' => [$url]
+					]);
+					$client->setData($data)
+						->setHeader('Content-Type', 'application/json; charset=utf-8')
+						->setTimeout(30)
+						->send($apiUrl);
+					$status = $client->getResponseStatus();
+					$res = $client->getResponseBody();
+				} else {
+					$res = $this->curlBingPost($url, $apiUrl, true);
+					$status = $res['code'];
+					$res = $res['data'];
+				}
+				if ($status == 200) {
+					$code = 1000;
+					$postMsg = 'Bing推送【成功】';
+				} elseif ($status == 202) {
+					$code = 1000;
+					$postMsg = 'Bing推送【已接收】，Key验证待确认';
+				} elseif ($status == 400) {
+					$postMsg .= '请求格式错误(400)';
+				} elseif ($status == 403) {
+					$postMsg .= 'Key无效(403)，请检查根目录的{key}.txt文件及密钥是否正确';
+				} elseif ($status == 422) {
+					$postMsg .= 'URL不属于该主机或Key格式不匹配(422)';
+				} elseif ($status == 429) {
+					$postMsg .= '请求过于频繁(429)';
+				} else {
+					$postMsg .= '未知错误，HTTP状态码：' . $status;
+				}
+			} catch (\Throwable $th) {
+				$postMsg .= '请求异常：' . $th->getMessage();
+			}
+		}
+		return [
+			'code' => $code,
+			'data' => $res,
+			'msg' => $postMsg
+		];
+	}
+	public function curlBingPost($url = null, $apiUrl = null, $code = false)
+	{
+		$ch = curl_init();
+		$data = json_encode([
+			'host' => parse_url($this->siteUrl, PHP_URL_HOST),
+			'key' => $this->Sitemap->bingApiKey,
+			'urlList' => [$url]
+		]);
+		$options =  array(
+			CURLOPT_URL => $apiUrl,
+			CURLOPT_POST => true,
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_POSTFIELDS => $data,
+			CURLOPT_HTTPHEADER => array('Content-Type: application/json; charset=utf-8'),
+		);
+		curl_setopt_array($ch, $options);
+		$result = curl_exec($ch);
+		$result = json_decode($result, true);
+		$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		if ($code === true) {
+			return array(
+				'code' => $httpCode,
+				'data' => $result
+			);
+		}
+		return $result;
+	}
 	public function curlPost($url = null, $code = false)
 	{
 		$ch = curl_init();

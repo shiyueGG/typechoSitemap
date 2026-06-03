@@ -76,6 +76,14 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		$apiPostToken = new Typecho_Widget_Helper_Form_Element_Text('apiPostToken', NULL, null, _t('API推送密钥'), _t('设置一个密钥，使用api推送时需携带，确保api安全调用。请勿外泄。<a target="_blank" href="https://Oct.cn/view/66#API主动推送">使用说明</a>'), ['class' => 'mini']);
 		$apiPostToken->input->setAttribute('class', 'mini');
 		$form->addInput($apiPostToken);
+		// Bing IndexNow推送
+		$bingPost =  new Typecho_Widget_Helper_Form_Element_Radio('bingPost', array('1' => _t('开启'), '0' => _t('关闭')), '1', _t('开启Bing推送'), _t('开启后发布完文章会自动推送给Bing，基于<a target="_blank" href="https://www.indexnow.org/">IndexNow</a>协议。'));
+		$form->addInput($bingPost);
+		$bingApiKey = new Typecho_Widget_Helper_Form_Element_Text('bingApiKey', NULL, '', _t('IndexNow密钥(Key)'), _t('8~128位十六进制字符，仅含a-z/A-Z/0-9/横杠。需在站点根目录放置{key}.txt文件验证所有权。<a target="_blank" href="https://www.indexnow.org/documentation">文档</a>'), ['class' => 'mini']);
+		$bingApiKey->input->setAttribute('class', 'mini');
+		$form->addInput($bingApiKey);
+		$bingApiUrl = new Typecho_Widget_Helper_Form_Element_Text('bingApiUrl', NULL, 'https://www.bing.com/indexnow', _t('IndexNow接口地址'), _t('默认为Bing的IndexNow端点，可替换为其他支持IndexNow的搜索引擎地址。'));
+		$form->addInput($bingApiUrl);
 		// 隐藏的分类
 		$mid = new Typecho_Widget_Helper_Form_Element_Text('mid', NULL, null, _t('填写不显示的分类mid'), _t('多个请用英文逗号,隔开。如:1,2 设置后将不输出该分类下的文章。mid获取方式：点击分类->编辑->查看网址后面的mid数字'), ['class' => 'mini']);
 		$mid->input->setAttribute('class', 'mini');
@@ -130,14 +138,22 @@ class Sitemap_Plugin implements Typecho_Plugin_Interface
 		$options = Typecho_Widget::widget('Widget_Options');
 		$Sitemap = $options->Plugin('Sitemap');
 		/* 允许自动推送 */
-		if ($Sitemap->baiduPost == 1) {
+		if ($Sitemap->baiduPost == 1 || $Sitemap->bingPost == 1) {
 			$url = $widget->permalink;
 			$mid = Typecho_Widget::widget('Sitemap_Action')->_ckmid();
 			if (in_array($widget->categories[0]['mid'], $mid)) {
 				$postMsg = '该分类设置了隐藏,不主动推送';
 			} else {
-				$res = Typecho_Widget::widget('Sitemap_Action')->sendBaiduPost($url);
-				$postMsg = $res['msg'];
+				$postMsgs = [];
+				if ($Sitemap->baiduPost == 1) {
+					$res = Typecho_Widget::widget('Sitemap_Action')->sendBaiduPost($url);
+					$postMsgs[] = $res['msg'];
+				}
+				if ($Sitemap->bingPost == 1) {
+					$res = Typecho_Widget::widget('Sitemap_Action')->sendBingPost($url);
+					$postMsgs[] = $res['msg'];
+				}
+				$postMsg = implode(' ', $postMsgs);
 			}
 			$adminUrl = Typecho_Common::url('manage-posts.php', $options->adminUrl);
 			header("refresh:0;url= " . $adminUrl);
